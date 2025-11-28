@@ -24,6 +24,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import type { Invoice, ColumnConfig } from "@/lib/definitions";
 import { cn } from "@/lib/utils";
+import { format } from "date-fns";
 
 type InvoiceTableProps = {
   invoices: Invoice[];
@@ -57,7 +58,10 @@ export function InvoiceTable({
     const value = invoice[column.key as keyof Invoice];
     switch (column.key) {
       case "date":
-        return (value as Date).toLocaleDateString();
+        if (value instanceof Date) {
+            return format(value, "yyyy-MM-dd");
+        }
+        return String(value);
       case "amount":
         return (value as number).toLocaleString("en-US", {
           style: "currency",
