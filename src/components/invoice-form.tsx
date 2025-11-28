@@ -59,7 +59,7 @@ export function InvoiceForm({
     resolver: zodResolver(invoiceSchema),
     defaultValues: invoice || {
       invoiceId: "",
-      customerName: "",
+      restaurantName: "",
       amount: 0,
       status: "Pending",
       date: undefined,
@@ -70,7 +70,7 @@ export function InvoiceForm({
     form.reset(
       invoice || {
         invoiceId: "",
-        customerName: "",
+        restaurantName: "",
         amount: 0,
         status: "Pending",
         date: undefined,
@@ -113,12 +113,12 @@ export function InvoiceForm({
             />
             <FormField
               control={form.control}
-              name="customerName"
+              name="restaurantName"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Customer Name</FormLabel>
+                  <FormLabel>Restaurant Name</FormLabel>
                   <FormControl>
-                    <Input placeholder="e.g., Globex Corporation" {...field} />
+                    <Input placeholder="e.g., The Gourmet Place" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

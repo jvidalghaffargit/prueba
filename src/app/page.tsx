@@ -23,7 +23,7 @@ import { extractInvoiceData } from "@/ai/flows/extract-invoice-flow";
 
 const initialColumnsData: ColumnConfig[] = [
   { key: "invoiceId", label: "Invoice ID", isVisible: true },
-  { key: "customerName", label: "Customer", isVisible: true },
+  { key: "restaurantName", label: "Restaurant", isVisible: true },
   { key: "date", label: "Date", isVisible: true },
   { key: "amount", label: "Amount", isVisible: true },
   { key: "status", label: "Status", isVisible: true },
@@ -200,7 +200,7 @@ export default function Home() {
         
         const newInvoice: Omit<Invoice, "id" | "userId"> = {
           invoiceId: extractedData.invoiceId,
-          customerName: extractedData.customerName,
+          restaurantName: extractedData.restaurantName,
           amount: extractedData.amount,
           date: new Date(extractedData.date),
           status: extractedData.status,

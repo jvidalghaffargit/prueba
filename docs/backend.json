@@ -23,9 +23,9 @@
           "type": "number",
           "description": "The total amount of the invoice."
         },
-        "customerName": {
+        "restaurantName": {
           "type": "string",
-          "description": "The name of the customer associated with the invoice."
+          "description": "The name of the restaurant associated with the invoice."
         },
         "status": {
             "type": "string",
@@ -41,7 +41,7 @@
         "invoiceId",
         "date",
         "amount",
-        "customerName",
+        "restaurantName",
         "status",
         "userId"
       ]
