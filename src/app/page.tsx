@@ -17,8 +17,9 @@ import { InvoiceTable } from "@/components/invoice-table";
 import { InvoiceForm } from "@/components/invoice-form";
 import { ColumnCustomizer } from "@/components/column-customizer";
 import { useToast } from "@/hooks/use-toast";
-import { useUser, initiateAnonymousSignIn, useAuth, useFirestore, useCollection, useMemoFirebase } from "@/firebase";
-import { collection, query, where, addDoc, serverTimestamp, doc, deleteDoc } from 'firebase/firestore';
+import { useUser, useAuth, useFirestore, useCollection, useMemoFirebase } from "@/firebase";
+import { initiateAnonymousSignIn } from "@/firebase/non-blocking-login";
+import { collection, query, where, addDoc, serverTimestamp, doc, deleteDoc, setDoc } from 'firebase/firestore';
 import { extractInvoiceData } from "@/ai/flows/extract-invoice-flow";
 
 const initialColumnsData: ColumnConfig[] = [
@@ -106,12 +107,23 @@ export default function Home() {
   };
 
   const handleUpdateInvoice = async (invoice: Invoice) => {
-    // This would require a PUT/PATCH endpoint in the API
-    console.warn("Update functionality not implemented in API route yet.");
-    toast({
-        title: "Pending Feature",
-        description: "Updating invoices is not yet supported in this version.",
+    if (!user || !firestore) return;
+    try {
+      const docRef = doc(firestore, 'invoices', invoice.id);
+      await setDoc(docRef, invoice, { merge: true });
+      toast({
+        title: "Success",
+        description: "Invoice updated successfully.",
+        variant: "default",
       });
+    } catch (e) {
+      console.error("Error updating invoice: ", e);
+      toast({
+        title: "Error",
+        description: "Could not update invoice.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleDeleteInvoice = async (id: string) => {
@@ -345,3 +357,5 @@ export default function Home() {
     </div>
   );
 }
+
+    
