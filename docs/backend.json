@@ -87,13 +87,13 @@
         }
       },
       {
-        "path": "/users/{userId}/invoices/{invoiceId}",
+        "path": "/newinvoices/{newinvoiceId}",
         "definition": {
           "entityName": "Invoice",
           "schema": {
             "$ref": "#/backend/entities/Invoice"
           },
-          "description": "Stores invoice data for each user. Authorization is based on the `userId` path parameter, ensuring only the authenticated user can access their own invoices."
+          "description": "Stores all invoices in a top-level collection."
         }
       }
     ]

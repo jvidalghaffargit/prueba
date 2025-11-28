@@ -24,7 +24,9 @@ import {
   deleteDoc,
   doc,
   updateDoc,
-  serverTimestamp
+  serverTimestamp,
+  query,
+  where
 } from "firebase/firestore";
 import { useCollection } from "@/firebase/firestore/use-collection";
 import { extractInvoiceData } from "@/ai/flows/extract-invoice-flow";
@@ -58,8 +60,8 @@ export default function Home() {
     }
   }, [user, isUserLoading, auth]);
 
-  const invoicesCollection = useMemoFirebase(
-    () => (user ? collection(firestore, "users", user.uid, "invoices") : null),
+  const invoicesQuery = useMemoFirebase(
+    () => (user && firestore ? query(collection(firestore, "newinvoices"), where("userId", "==", user.uid)) : null),
     [firestore, user]
   );
   
@@ -67,7 +69,7 @@ export default function Home() {
     data: invoices,
     isLoading: isInvoicesLoading,
     error,
-  } = useCollection<Invoice>(invoicesCollection);
+  } = useCollection<Invoice>(invoicesQuery);
   
   const sortedInvoices = useMemo(
     () =>
@@ -84,7 +86,8 @@ export default function Home() {
   );
 
   const handleAddInvoice = async (invoice: Omit<Invoice, "id" | "userId">) => {
-    if (!invoicesCollection || !user) return;
+    if (!firestore || !user) return;
+    const invoicesCollection = collection(firestore, "newinvoices");
     try {
       await addDoc(invoicesCollection, {...invoice, userId: user.uid });
       toast({
@@ -103,8 +106,8 @@ export default function Home() {
   };
 
   const handleUpdateInvoice = async (invoice: Invoice) => {
-    if (!user) return;
-    const docRef = doc(firestore, "users", user.uid, "invoices", invoice.id);
+    if (!firestore || !user) return;
+    const docRef = doc(firestore, "newinvoices", invoice.id);
     try {
       const { id, ...invoiceData } = invoice;
       await updateDoc(docRef, invoiceData);
@@ -124,8 +127,8 @@ export default function Home() {
   };
 
   const handleDeleteInvoice = async (id: string) => {
-    if (!user) return;
-    const docRef = doc(firestore, "users", user.uid, "invoices", id);
+    if (!firestore) return;
+    const docRef = doc(firestore, "newinvoices", id);
     try {
       await deleteDoc(docRef);
       toast({
@@ -222,7 +225,6 @@ export default function Home() {
           invoiceId: extractedData.invoiceId,
           customerName: extractedData.customerName,
           amount: extractedData.amount,
-          // Ensure date is a valid Date object
           date: new Date(extractedData.date),
           status: extractedData.status,
         };

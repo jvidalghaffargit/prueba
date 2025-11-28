@@ -7,7 +7,7 @@
  * Data Structure: The data is organized hierarchically to reflect ownership.
  * All user-related data, including invoices, is nested under the path /users/{userId}.
  *   - /users/{userId}
- *   - /users/{userId}/invoices/{invoiceId}
+ *   - /newinvoices/{newinvoiceId}
  *
  * Key Security Decisions:
  * - Default Deny: All operations are denied unless explicitly allowed.
@@ -48,8 +48,13 @@ service cloud.firestore {
      * Used for safe update and delete operations.
      */
     function isExistingOwner(userId) {
-      return isOwner(userId) && resource != null;
+      return isOwner(userId) && exists(get(path).data);
     }
+    
+    function isResourceOwner(resource) {
+        return isSignedIn() && request.auth.uid == resource.data.userId;
+    }
+
 
     // --- Validation Functions: User ---
 
@@ -105,13 +110,13 @@ service cloud.firestore {
     }
 
     /**
-     * @description Controls access to a user's invoices.
-     * @path /users/{userId}/invoices/{invoiceId}
+     * @description Controls access to invoices in the top-level collection.
+     * @path /newinvoices/{newinvoiceId}
      */
-    match /users/{userId}/invoices/{invoiceId} {
-      allow get, list, delete: if isOwner(userId);
-      allow create: if isOwner(userId) && isValidInvoiceCreate(userId);
-      allow update: if isExistingOwner(userId) && isImmutableInvoiceUpdate();
+    match /newinvoices/{newinvoiceId} {
+      allow read: if isSignedIn();
+      allow create: if isResourceOwner(request.resource);
+      allow update, delete: if isResourceOwner(resource);
     }
   }
 }
