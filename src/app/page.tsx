@@ -18,7 +18,7 @@ import { InvoiceForm } from "@/components/invoice-form";
 import { ColumnCustomizer } from "@/components/column-customizer";
 import { useToast } from "@/hooks/use-toast";
 import { useUser, initiateAnonymousSignIn, useAuth, useFirestore, useCollection, useMemoFirebase } from "@/firebase";
-import { collection, query, where, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, query, where, addDoc, serverTimestamp, doc, deleteDoc } from 'firebase/firestore';
 import { extractInvoiceData } from "@/ai/flows/extract-invoice-flow";
 
 const initialColumnsData: ColumnConfig[] = [
@@ -115,12 +115,23 @@ export default function Home() {
   };
 
   const handleDeleteInvoice = async (id: string) => {
-     // This would require a DELETE endpoint in the API
-     console.warn("Delete functionality not implemented in API route yet.");
-     toast({
-        title: "Pending Feature",
-        description: "Deleting invoices is not yet supported in this version.",
+    if (!user || !firestore) return;
+    try {
+      const docRef = doc(firestore, "invoices", id);
+      await deleteDoc(docRef);
+      toast({
+        title: "Success",
+        description: "Invoice deleted successfully.",
+        variant: "default",
       });
+    } catch (e) {
+      console.error("Error deleting invoice: ", e);
+      toast({
+        title: "Error",
+        description: "Could not delete invoice.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleOpenForm = (invoice?: Invoice) => {
