@@ -1,11 +1,14 @@
+
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useRef } from "react";
 import {
   Download,
   FileSpreadsheet,
   Plus,
   Settings,
+  ScanLine,
+  Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,33 +17,16 @@ import { InvoiceTable } from "@/components/invoice-table";
 import { InvoiceForm } from "@/components/invoice-form";
 import { ColumnCustomizer } from "@/components/column-customizer";
 import { useToast } from "@/hooks/use-toast";
-
-const initialInvoicesData: Invoice[] = [
-  {
-    id: "inv-001",
-    invoiceId: "INV-2024-001",
-    customerName: "Acme Inc.",
-    amount: 1250.75,
-    date: new Date("2024-07-15"),
-    status: "Paid",
-  },
-  {
-    id: "inv-002",
-    invoiceId: "INV-2024-002",
-    customerName: "Stark Industries",
-    amount: 5420.0,
-    date: new Date("2024-07-20"),
-    status: "Pending",
-  },
-  {
-    id: "inv-003",
-    invoiceId: "INV-2024-003",
-    customerName: "Wayne Enterprises",
-    amount: 899.99,
-    date: new Date("2024-06-30"),
-    status: "Overdue",
-  },
-];
+import { useUser, useFirestore, useMemoFirebase } from "@/firebase";
+import {
+  collection,
+  addDoc,
+  deleteDoc,
+  doc,
+  updateDoc,
+} from "firebase/firestore";
+import { useCollection } from "@/firebase/firestore/use-collection";
+import { extractInvoiceData } from "@/ai/flows/extract-invoice-flow";
 
 const initialColumnsData: ColumnConfig[] = [
   { key: "invoiceId", label: "Invoice ID", isVisible: true },
@@ -51,43 +37,99 @@ const initialColumnsData: ColumnConfig[] = [
 ];
 
 export default function Home() {
-  const [invoices, setInvoices] = useState<Invoice[]>(initialInvoicesData);
   const [columns, setColumns] = useState<ColumnConfig[]>(initialColumnsData);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isCustomizerOpen, setIsCustomizerOpen] = useState(false);
   const [invoiceToEdit, setInvoiceToEdit] = useState<Invoice | undefined>(
     undefined
   );
+  const [isScanning, setIsScanning] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const { toast } = useToast();
+  const { user, isUserLoading } = useUser();
+  const firestore = useFirestore();
 
-  const handleAddInvoice = (invoice: Omit<Invoice, "id">) => {
-    const newInvoice = { ...invoice, id: `inv-${Date.now()}` };
-    setInvoices((prev) => [newInvoice, ...prev]);
-    toast({
-      title: "Success",
-      description: "Invoice added successfully.",
-      variant: "default",
-    });
+  const invoicesCollection = useMemoFirebase(
+    () => (user ? collection(firestore, "users", user.uid, "invoices") : null),
+    [firestore, user]
+  );
+  const {
+    data: invoicesData,
+    isLoading: isInvoicesLoading,
+    error,
+  } = useCollection<Omit<Invoice, "id">>(invoicesCollection);
+  
+  const invoices = invoicesData || [];
+
+  const sortedInvoices = useMemo(
+    () =>
+      invoices
+        ? [...invoices].sort(
+            (a, b) =>
+              new Date(b.date).getTime() - new Date(a.date).getTime()
+          )
+        : [],
+    [invoices]
+  );
+
+  const handleAddInvoice = async (invoice: Omit<Invoice, "id">) => {
+    if (!invoicesCollection) return;
+    try {
+      await addDoc(invoicesCollection, invoice);
+      toast({
+        title: "Success",
+        description: "Invoice added successfully.",
+        variant: "default",
+      });
+    } catch (e) {
+      console.error("Error adding document: ", e);
+      toast({
+        title: "Error",
+        description: "Could not add invoice.",
+        variant: "destructive",
+      });
+    }
   };
 
-  const handleUpdateInvoice = (invoice: Invoice) => {
-    setInvoices((prev) =>
-      prev.map((i) => (i.id === invoice.id ? invoice : i))
-    );
-    toast({
-      title: "Success",
-      description: "Invoice updated successfully.",
-      variant: "default",
-    });
+  const handleUpdateInvoice = async (invoice: Invoice) => {
+    if (!user) return;
+    const docRef = doc(firestore, "users", user.uid, "invoices", invoice.id);
+    try {
+      await updateDoc(docRef, invoice);
+      toast({
+        title: "Success",
+        description: "Invoice updated successfully.",
+        variant: "default",
+      });
+    } catch (e) {
+      console.error("Error updating document: ", e);
+      toast({
+        title: "Error",
+        description: "Could not update invoice.",
+        variant: "destructive",
+      });
+    }
   };
 
-  const handleDeleteInvoice = (id: string) => {
-    setInvoices((prev) => prev.filter((i) => i.id !== id));
-    toast({
-      title: "Invoice Deleted",
-      description: "The invoice has been removed.",
-      variant: "destructive",
-    });
+  const handleDeleteInvoice = async (id: string) => {
+    if (!user) return;
+    const docRef = doc(firestore, "users", user.uid, "invoices", id);
+    try {
+      await deleteDoc(docRef);
+      toast({
+        title: "Invoice Deleted",
+        description: "The invoice has been removed.",
+        variant: "destructive",
+      });
+    } catch (e) {
+      console.error("Error deleting document: ", e);
+      toast({
+        title: "Error",
+        description: "Could not delete invoice.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleOpenForm = (invoice?: Invoice) => {
@@ -110,7 +152,7 @@ export default function Home() {
   const handleDownload = () => {
     const visibleColumns = columns.filter((c) => c.isVisible);
     const header = visibleColumns.map((c) => escapeCsvCell(c.label)).join(",");
-    const rows = invoices.map((invoice) =>
+    const rows = sortedInvoices.map((invoice) =>
       visibleColumns
         .map((c) => {
           const value = invoice[c.key as keyof Invoice];
@@ -140,7 +182,61 @@ export default function Home() {
     });
   };
 
-  const visibleColumns = useMemo(() => columns.filter(c => c.isVisible), [columns]);
+  const handleImageUpload = async (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setIsScanning(true);
+    toast({
+      title: "Scanning Invoice...",
+      description: "The AI is processing the image. Please wait.",
+    });
+
+    try {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = async () => {
+        const photoDataUri = reader.result as string;
+        const extractedData = await extractInvoiceData({ photoDataUri });
+        
+        // The date from AI is a string, convert it to a Date object
+        const invoiceData = {
+          ...extractedData,
+          date: new Date(extractedData.date),
+        };
+
+        await handleAddInvoice(invoiceData);
+        toast({
+          title: "Scan Complete!",
+          description: "Invoice data successfully extracted and added.",
+        });
+      };
+      reader.onerror = (error) => {
+        throw new Error("Failed to read file.");
+      }
+    } catch (e) {
+      console.error("Error processing invoice image:", e);
+      toast({
+        variant: "destructive",
+        title: "Scan Failed",
+        description:
+          "Could not extract data from the invoice image. Please try again.",
+      });
+    } finally {
+      setIsScanning(false);
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
+  };
+
+  const visibleColumns = useMemo(
+    () => columns.filter((c) => c.isVisible),
+    [columns]
+  );
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -154,7 +250,27 @@ export default function Home() {
               </h1>
             </div>
             <div className="flex items-center space-x-2">
-              <Button onClick={() => handleOpenForm()}>
+               <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleImageUpload}
+                className="hidden"
+                accept="image/*"
+                disabled={isScanning}
+              />
+              <Button
+                variant="outline"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isScanning}
+              >
+                {isScanning ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <ScanLine className="mr-2 h-4 w-4" />
+                )}
+                Scan Invoice
+              </Button>
+              <Button onClick={() => handleOpenForm()} disabled={isScanning}>
                 <Plus className="mr-2 h-4 w-4" /> Add Invoice
               </Button>
             </div>
@@ -167,21 +283,35 @@ export default function Home() {
           <CardHeader className="flex flex-row items-center justify-between space-y-0">
             <CardTitle>Your Invoices</CardTitle>
             <div className="flex space-x-2">
-              <Button variant="outline" onClick={handleDownload} disabled={invoices.length === 0}>
+              <Button
+                variant="outline"
+                onClick={handleDownload}
+                disabled={invoices.length === 0 || isScanning}
+              >
                 <Download className="mr-2 h-4 w-4" /> Download
               </Button>
-              <Button variant="outline" onClick={() => setIsCustomizerOpen(true)}>
+              <Button
+                variant="outline"
+                onClick={() => setIsCustomizerOpen(true)}
+                disabled={isScanning}
+              >
                 <Settings className="mr-2 h-4 w-4" /> Customize
               </Button>
             </div>
           </CardHeader>
           <CardContent>
-            <InvoiceTable
-              invoices={invoices}
-              columns={visibleColumns}
-              onEdit={handleOpenForm}
-              onDelete={handleDeleteInvoice}
-            />
+            {isUserLoading || isInvoicesLoading ? (
+               <div className="flex justify-center items-center py-16">
+                 <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+               </div>
+            ) : (
+              <InvoiceTable
+                invoices={sortedInvoices}
+                columns={visibleColumns}
+                onEdit={handleOpenForm}
+                onDelete={handleDeleteInvoice}
+              />
+            )}
           </CardContent>
         </Card>
       </main>
