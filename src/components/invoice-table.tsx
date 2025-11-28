@@ -30,7 +30,7 @@ type InvoiceTableProps = {
   invoices: Invoice[];
   columns: ColumnConfig[];
   onEdit: (invoice: Invoice) => void;
-  onDelete: (id: string) => void;
+  onDelete: (invoice: Invoice) => void;
 };
 
 // Helper to convert Firestore Timestamp to JS Date
@@ -144,7 +144,7 @@ export function InvoiceTable({
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       className="text-destructive focus:text-destructive focus:bg-destructive/10"
-                      onClick={() => onDelete(invoice.id)}
+                      onClick={() => onDelete(invoice)}
                     >
                       <Trash2 className="mr-2 h-4 w-4" />
                       <span>Delete</span>

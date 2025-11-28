@@ -21,6 +21,16 @@ import { useUser, useAuth, useFirestore, useCollection, useMemoFirebase } from "
 import { initiateAnonymousSignIn } from "@/firebase/non-blocking-login";
 import { collection, query, where, addDoc, serverTimestamp, doc, deleteDoc, setDoc } from 'firebase/firestore';
 import { extractInvoiceData } from "@/ai/flows/extract-invoice-flow";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const initialColumnsData: ColumnConfig[] = [
   { key: "invoiceId", label: "Invoice ID", isVisible: true },
@@ -38,6 +48,7 @@ export default function Home() {
     undefined
   );
   const [isScanning, setIsScanning] = useState(false);
+  const [invoiceToDelete, setInvoiceToDelete] = useState<Invoice | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { toast } = useToast();
@@ -126,14 +137,18 @@ export default function Home() {
     }
   };
 
-  const handleDeleteInvoice = async (id: string) => {
-    if (!user || !firestore) return;
+  const confirmDeleteInvoice = (invoice: Invoice) => {
+    setInvoiceToDelete(invoice);
+  };
+
+  const handleDeleteInvoice = async () => {
+    if (!user || !firestore || !invoiceToDelete) return;
     try {
-      const docRef = doc(firestore, "invoices", id);
+      const docRef = doc(firestore, "invoices", invoiceToDelete.id);
       await deleteDoc(docRef);
       toast({
         title: "Success",
-        description: "Invoice deleted successfully.",
+        description: `Invoice ${invoiceToDelete.invoiceId} deleted successfully.`,
         variant: "default",
       });
     } catch (e) {
@@ -143,6 +158,8 @@ export default function Home() {
         description: "Could not delete invoice.",
         variant: "destructive",
       });
+    } finally {
+      setInvoiceToDelete(null);
     }
   };
 
@@ -334,7 +351,7 @@ export default function Home() {
                 invoices={sortedInvoices}
                 columns={visibleColumns}
                 onEdit={handleOpenForm}
-                onDelete={handleDeleteInvoice}
+                onDelete={confirmDeleteInvoice}
               />
             )}
           </CardContent>
@@ -354,6 +371,25 @@ export default function Home() {
         columns={columns}
         onColumnChange={setColumns}
       />
+      
+      <AlertDialog open={!!invoiceToDelete} onOpenChange={(open) => !open && setInvoiceToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the invoice{" "}
+              <span className="font-bold">{invoiceToDelete?.invoiceId}</span>.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setInvoiceToDelete(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteInvoice}>
+              Continue
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
     </div>
   );
 }
