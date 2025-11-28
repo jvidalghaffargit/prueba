@@ -201,10 +201,13 @@ export default function Home() {
         const photoDataUri = reader.result as string;
         const extractedData = await extractInvoiceData({ photoDataUri });
         
-        // The date from AI is a string, convert it to a Date object
+        // Map AI output to the structure expected by handleAddInvoice
         const invoiceData = {
-          ...extractedData,
+          invoiceId: extractedData.invoiceId,
+          customerName: extractedData.customerName,
+          amount: extractedData.amount,
           date: new Date(extractedData.date),
+          status: extractedData.status,
         };
 
         await handleAddInvoice(invoiceData);
@@ -214,6 +217,7 @@ export default function Home() {
         });
       };
       reader.onerror = (error) => {
+        console.error("File reading error:", error);
         throw new Error("Failed to read file.");
       }
     } catch (e) {
