@@ -33,6 +33,17 @@ type InvoiceTableProps = {
   onDelete: (id: string) => void;
 };
 
+// Helper to convert Firestore Timestamp to JS Date
+const toDate = (value: Invoice['date']): Date | null => {
+  if (!value) return null;
+  if (value instanceof Date) return value;
+  if (value && typeof value === 'object' && 'seconds' in value) {
+    return new Date((value as any).seconds * 1000);
+  }
+  const parsed = new Date(value as any);
+  return isNaN(parsed.getTime()) ? null : parsed;
+}
+
 export function InvoiceTable({
   invoices,
   columns,
@@ -58,15 +69,11 @@ export function InvoiceTable({
     const value = invoice[column.key as keyof Invoice];
     switch (column.key) {
       case "date":
-        let dateValue: Date;
-        if (value instanceof Date) {
-            dateValue = value;
-        } else if (value && typeof value === 'object' && 'seconds' in value) {
-            dateValue = new Date((value as any).seconds * 1000);
-        } else {
-            return String(value); // Fallback
+        const dateValue = toDate(value as Invoice['date']);
+        if (dateValue) {
+          return format(dateValue, "yyyy-MM-dd");
         }
-        return format(dateValue, "yyyy-MM-dd");
+        return "Invalid Date";
 
       case "amount":
         return (value as number).toLocaleString("en-US", {

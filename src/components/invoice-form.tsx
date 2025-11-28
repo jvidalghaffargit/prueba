@@ -49,6 +49,18 @@ type InvoiceFormProps = {
   invoice?: Invoice;
 };
 
+// Helper to convert Firestore Timestamp to JS Date
+const toDate = (value: Invoice['date']): Date | undefined => {
+  if (!value) return undefined;
+  if (value instanceof Date) return value;
+  if (value && typeof value === 'object' && 'seconds' in value) {
+    return new Date((value as any).seconds * 1000);
+  }
+  // Fallback for unexpected formats, though it might still fail if format is truly invalid
+  const parsed = new Date(value as any);
+  return isNaN(parsed.getTime()) ? undefined : parsed;
+}
+
 export function InvoiceForm({
   isOpen,
   onClose,
@@ -57,25 +69,34 @@ export function InvoiceForm({
 }: InvoiceFormProps) {
   const form = useForm<z.infer<typeof invoiceSchema>>({
     resolver: zodResolver(invoiceSchema),
-    defaultValues: invoice || {
+    defaultValues: {
       invoiceId: "",
       restaurantName: "",
       amount: 0,
       status: "Pending",
       date: undefined,
+      ...invoice,
+      date: invoice ? toDate(invoice.date) : undefined,
     },
   });
 
   useEffect(() => {
-    form.reset(
-      invoice || {
-        invoiceId: "",
-        restaurantName: "",
-        amount: 0,
-        status: "Pending",
-        date: undefined,
-      }
-    );
+    if (isOpen) {
+      form.reset(
+        invoice
+          ? {
+              ...invoice,
+              date: toDate(invoice.date),
+            }
+          : {
+              invoiceId: "",
+              restaurantName: "",
+              amount: 0,
+              status: "Pending",
+              date: undefined,
+            }
+      );
+    }
   }, [invoice, isOpen, form]);
 
   const onSubmit = (values: z.infer<typeof invoiceSchema>) => {
