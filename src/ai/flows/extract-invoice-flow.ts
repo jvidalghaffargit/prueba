@@ -26,7 +26,6 @@ const ExtractInvoiceOutputSchema = z.object({
     businessName: z.string().describe("The name of the business or company being invoiced."),
     amount: z.number().describe("The total amount due on the invoice."),
     date: z.string().describe("The date the invoice was issued, in YYYY-MM-DD format."),
-    status: z.enum(["Paid", "Pending", "Overdue"]).describe("The status of the invoice. If not specified, default to 'Pending'.")
 });
 export type ExtractInvoiceOutput = z.infer<typeof ExtractInvoiceOutputSchema>;
 
@@ -44,8 +43,6 @@ const prompt = ai.definePrompt({
 Analyze the image and accurately pull out the following fields: Invoice ID, Business Name, Total Amount, and Issue Date.
 
 If an Invoice ID is not explicitly present on the invoice, you must generate a plausible one (e.g., INV- followed by a sequence of numbers).
-
-Set the status to 'Pending' unless the invoice explicitly says it is 'Paid' or is clearly past its due date, in which case set it to 'Overdue'.
 
 Return the data in the specified JSON format.
 

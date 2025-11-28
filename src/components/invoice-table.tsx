@@ -21,9 +21,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Badge } from "@/components/ui/badge";
 import type { Invoice, ColumnConfig } from "@/lib/definitions";
-import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 
 type InvoiceTableProps = {
@@ -50,21 +48,7 @@ export function InvoiceTable({
   onEdit,
   onDelete,
 }: InvoiceTableProps) {
-  const getStatusBadgeVariant = (
-    status: "Paid" | "Pending" | "Overdue"
-  ) => {
-    switch (status) {
-      case "Paid":
-        return "default";
-      case "Pending":
-        return "secondary";
-      case "Overdue":
-        return "destructive";
-      default:
-        return "outline";
-    }
-  };
-
+  
   const formatValue = (invoice: Invoice, column: ColumnConfig) => {
     const value = invoice[column.key as keyof Invoice];
     switch (column.key) {
@@ -80,21 +64,6 @@ export function InvoiceTable({
           style: "currency",
           currency: "USD",
         });
-      case "status":
-        return (
-          <Badge
-            className={cn({
-              'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200': value === 'Paid',
-              'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200': value === 'Pending',
-              'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200': value === 'Overdue',
-            })}
-            variant={getStatusBadgeVariant(
-              value as "Paid" | "Pending" | "Overdue"
-            )}
-          >
-            {value as string}
-          </Badge>
-        );
       default:
         return value as string | number;
     }

@@ -26,13 +26,6 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   Popover,
   PopoverContent,
   PopoverTrigger,
@@ -73,7 +66,6 @@ export function InvoiceForm({
       invoiceId: "",
       businessName: "",
       amount: 0,
-      status: "Pending",
       date: undefined,
       ...invoice,
       date: invoice ? toDate(invoice.date) : undefined,
@@ -92,7 +84,6 @@ export function InvoiceForm({
               invoiceId: "",
               businessName: "",
               amount: 0,
-              status: "Pending",
               date: undefined,
             }
       );
@@ -145,20 +136,20 @@ export function InvoiceForm({
                 </FormItem>
               )}
             />
-            <FormField
-              control={form.control}
-              name="amount"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Amount</FormLabel>
-                  <FormControl>
-                    <Input type="number" placeholder="e.g., 1500.00" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
             <div className="grid grid-cols-2 gap-4">
+                <FormField
+                    control={form.control}
+                    name="amount"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>Amount</FormLabel>
+                        <FormControl>
+                            <Input type="number" placeholder="e.g., 1500.00" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                />
                 <FormField
                 control={form.control}
                 name="date"
@@ -196,28 +187,6 @@ export function InvoiceForm({
                         />
                         </PopoverContent>
                     </Popover>
-                    <FormMessage />
-                    </FormItem>
-                )}
-                />
-                <FormField
-                control={form.control}
-                name="status"
-                render={({ field }) => (
-                    <FormItem>
-                    <FormLabel>Status</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl>
-                        <SelectTrigger>
-                            <SelectValue placeholder="Select status" />
-                        </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                        <SelectItem value="Paid">Paid</SelectItem>
-                        <SelectItem value="Pending">Pending</SelectItem>
-                        <SelectItem value="Overdue">Overdue</SelectItem>
-                        </SelectContent>
-                    </Select>
                     <FormMessage />
                     </FormItem>
                 )}

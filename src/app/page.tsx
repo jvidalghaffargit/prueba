@@ -37,7 +37,6 @@ const initialColumnsData: ColumnConfig[] = [
   { key: "businessName", label: "Business", isVisible: true },
   { key: "date", label: "Date", isVisible: true },
   { key: "amount", label: "Amount", isVisible: true },
-  { key: "status", label: "Status", isVisible: true },
 ];
 
 export default function Home() {
@@ -243,7 +242,6 @@ export default function Home() {
           businessName: extractedData.businessName,
           amount: extractedData.amount,
           date: new Date(extractedData.date),
-          status: extractedData.status,
         };
 
         await handleAddInvoice(newInvoice);

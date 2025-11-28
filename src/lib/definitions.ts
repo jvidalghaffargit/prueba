@@ -7,7 +7,6 @@ export const invoiceSchema = z.object({
   businessName: z.string().min(1, "Business name is required."),
   amount: z.coerce.number().positive("Amount must be a positive number."),
   date: z.date({ required_error: "Please select a date." }),
-  status: z.enum(["Paid", "Pending", "Overdue"]),
 });
 
 // This is the TypeScript type for an invoice as it is stored in Firestore.
@@ -20,7 +19,6 @@ export type Invoice = {
   businessName: string;
   amount: number;
   date: Date | { seconds: number; nanoseconds: number };
-  status: "Paid" | "Pending" | "Overdue";
 };
 
 
