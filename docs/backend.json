@@ -1,0 +1,173 @@
+{
+  "entities": {
+    "Invoice": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Invoice",
+      "type": "object",
+      "description": "Represents an invoice record.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Invoice entity."
+        },
+        "date": {
+          "type": "string",
+          "description": "The date of the invoice.",
+          "format": "date-time"
+        },
+        "amount": {
+          "type": "number",
+          "description": "The total amount of the invoice."
+        },
+        "customer": {
+          "type": "string",
+          "description": "The name of the customer associated with the invoice."
+        },
+        "description": {
+          "type": "string",
+          "description": "A description of the invoice."
+        },
+        "excelConfigurationId": {
+          "type": "string",
+          "description": "Reference to ExcelConfiguration. (Relationship: ExcelConfiguration 1:N Invoice)"
+        }
+      },
+      "required": [
+        "id",
+        "date",
+        "amount",
+        "customer",
+        "description",
+        "excelConfigurationId"
+      ]
+    },
+    "ExcelConfiguration": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "ExcelConfiguration",
+      "type": "object",
+      "description": "Stores the user's Excel column configuration preferences.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the ExcelConfiguration entity."
+        },
+        "columnOrder": {
+          "type": "array",
+          "description": "The order of columns in the Excel file.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "hiddenColumns": {
+          "type": "array",
+          "description": "The columns that are hidden in the Excel file.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to User. (Relationship: User 1:N ExcelConfiguration)"
+        }
+      },
+      "required": [
+        "id",
+        "columnOrder",
+        "hiddenColumns",
+        "userId"
+      ]
+    },
+    "User": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "User",
+      "type": "object",
+      "description": "Represents a user of the application.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the User entity."
+        },
+        "email": {
+          "type": "string",
+          "description": "The email address of the user.",
+          "format": "email"
+        }
+      },
+      "required": [
+        "id",
+        "email"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "User",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Stores user profiles.  Authorization is based on the `userId` path parameter, ensuring only the authenticated user can access their own profile.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user, corresponding to their Firebase Auth UID."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/excelConfigurations/{excelConfigurationId}",
+        "definition": {
+          "entityName": "ExcelConfiguration",
+          "schema": {
+            "$ref": "#/backend/entities/ExcelConfiguration"
+          },
+          "description": "Stores Excel configuration settings for each user. Authorization is based on the `userId` path parameter, ensuring only the authenticated user can access their own configurations.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user who owns the configuration."
+            },
+            {
+              "name": "excelConfigurationId",
+              "description": "The unique identifier of the Excel configuration."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/excelConfigurations/{excelConfigurationId}/invoices/{invoiceId}",
+        "definition": {
+          "entityName": "Invoice",
+          "schema": {
+            "$ref": "#/backend/entities/Invoice"
+          },
+          "description": "Stores invoice data associated with a specific Excel configuration. Authorization is based on the `userId` path parameter, ensuring only the authenticated user can access their own invoices.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user who owns the invoice."
+            },
+            {
+              "name": "excelConfigurationId",
+              "description": "The unique identifier of the Excel configuration associated with the invoice."
+            },
+            {
+              "name": "invoiceId",
+              "description": "The unique identifier of the invoice."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore structure is designed to ensure Authorization Independence, DBAC, and QAPs. User data and their configurations are stored under their respective user ID paths (`/users/{userId}`). This ensures clear ownership and simplifies security rules. Excel configurations are stored as subcollections under users, maintaining a clear 1:N relationship. Invoices are stored as a subcollection of Excel configurations, maintaining a clear 1:N relationship. This structure avoids hierarchical `get()` calls for authorization, promoting atomic operations and easier debugging. The Excel configuration id inside invoices enables efficient querying of invoices by configuration. \n\n**Authorization Independence:** The structure avoids `get()` calls in security rules by storing Excel configurations directly under user documents, eliminating the need to retrieve user information during invoice creation.  \n\n**QAPs Support:** List operations are secured because data is segregated by user ID. Rules can easily filter based on `request.auth.uid` to allow only the authenticated user to access their own data. The use of path-based ownership (`/users/{userId}/excelConfigurations/{excelConfigurationId}/invoices/{invoiceId}`) inherently supports secure list operations, as rules can be scoped to only allow listing resources owned by the authenticated user."
+  }
+}
