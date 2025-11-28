@@ -5,11 +5,9 @@
  * document path. This creates a secure, private data space for each user.
  *
  * Data Structure: The data is organized hierarchically to reflect ownership.
- * All user-related data, including Excel configurations and their associated
- * invoices, is nested under the path /users/{userId}.
+ * All user-related data, including invoices, is nested under the path /users/{userId}.
  *   - /users/{userId}
- *   - /users/{userId}/excelConfigurations/{excelConfigurationId}
- *   - /users/{userId}/excelConfigurations/{excelConfigurationId}/invoices/{invoiceId}
+ *   - /users/{userId}/invoices/{invoiceId}
  *
  * Key Security Decisions:
  * - Default Deny: All operations are denied unless explicitly allowed.
@@ -19,19 +17,8 @@
  *   /users collection, protecting user privacy.
  * - Path-Based Authorization: Ownership is determined by the {userId} wildcard
  *   in the path, which is matched against the request.auth.uid. This avoids
+
  *   costly get() calls to other documents for authorization.
- *
- * Denormalization for Authorization: The hierarchical structure itself is a form
- * of denormalization for authorization. By placing all of a user's data under a
- * path containing their UID, we avoid needing to read other documents to verify
- * ownership. Additionally, rules enforce that documents contain internal IDs
- * (e.g., a `userId` field on an `ExcelConfiguration`) that match the path,
- * ensuring relational integrity on creation and immutability on update.
- *
- * Structural Segregation: User data is naturally segregated by storing it in
- * distinct subcollections under each user's unique ID. This is the most secure
- * and performant way to manage private, user-owned data and simplifies rules
- * for list operations.
  */
 rules_version = '2';
 service cloud.firestore {
@@ -82,41 +69,22 @@ service cloud.firestore {
       return request.resource.data.id == resource.data.id;
     }
 
-    // --- Validation Functions: ExcelConfiguration ---
-
-    /**
-     * Validates required fields for Excel configuration creation.
-     * Enforces that the new document is correctly linked to its owner path.
-     */
-    function isValidExcelConfigCreate(userId) {
-      return request.resource.data.userId == userId;
-    }
-
-    /**
-     * Enforces immutability for critical Excel configuration fields on update.
-     * The ownership link (userId) must not be changed.
-     */
-    function isImmutableExcelConfigUpdate() {
-      return request.resource.data.userId == resource.data.userId;
-    }
-
     // --- Validation Functions: Invoice ---
 
     /**
      * Validates required fields for invoice creation.
-     * Enforces that the new invoice is correctly linked to its parent
-     * excelConfiguration path.
+     * Enforces that the new invoice is correctly linked to its owner path.
      */
-    function isValidInvoiceCreate(excelConfigurationId) {
-      return request.resource.data.excelConfigurationId == excelConfigurationId;
+    function isValidInvoiceCreate(userId) {
+      return request.resource.data.userId == userId;
     }
 
     /**
      * Enforces immutability for critical invoice fields on update.
-     * The link to the parent excelConfiguration must not be changed.
+     * The ownership link (userId) must not be changed.
      */
     function isImmutableInvoiceUpdate() {
-      return request.resource.data.excelConfigurationId == resource.data.excelConfigurationId;
+      return request.resource.data.userId == resource.data.userId;
     }
 
 
@@ -127,10 +95,6 @@ service cloud.firestore {
     /**
      * @description Controls access to a user's own profile document.
      * @path /users/{userId}
-     * @allow (get, update) Authenticated user 'user_abc' accessing their own profile at /users/user_abc.
-     * @allow (create) New user 'user_abc' creating their own profile at /users/user_abc.
-     * @deny (get, create, update) User 'user_xyz' trying to access /users/user_abc.
-     * @principle Restricts access to a user's own data tree and allows self-creation of a profile.
      */
     match /users/{userId} {
       allow get: if isOwner(userId);
@@ -141,33 +105,13 @@ service cloud.firestore {
     }
 
     /**
-     * @description Controls access to a user's Excel configurations.
-     * @path /users/{userId}/excelConfigurations/{excelConfigurationId}
-     * @allow (get, list) User 'user_abc' reading their own configurations at /users/user_abc/excelConfigurations.
-     * @allow (create) User 'user_abc' creating a new configuration document.
-     * @deny (list, create, update, delete) User 'user_xyz' trying to access data under /users/user_abc.
-     * @principle Enforces document ownership for all operations within a user-owned subcollection.
+     * @description Controls access to a user's invoices.
+     * @path /users/{userId}/invoices/{invoiceId}
      */
-    match /users/{userId}/excelConfigurations/{excelConfigurationId} {
-      allow get, list: if isOwner(userId);
-      allow create: if isOwner(userId) && isValidExcelConfigCreate(userId);
-      allow update: if isExistingOwner(userId) && isImmutableExcelConfigUpdate();
-      allow delete: if isExistingOwner(userId);
-    }
-
-    /**
-     * @description Controls access to invoices, which are nested under a specific Excel configuration.
-     * @path /users/{userId}/excelConfigurations/{excelConfigurationId}/invoices/{invoiceId}
-     * @allow (get, list) User 'user_abc' reading their own invoices for a given configuration.
-     * @allow (create) User 'user_abc' creating a new invoice document.
-     * @deny (any) Any user trying to access invoices outside of their own /users/{userId} path.
-     * @principle Enforces transitive ownership; access to a nested document requires ownership of the entire path.
-     */
-    match /users/{userId}/excelConfigurations/{excelConfigurationId}/invoices/{invoiceId} {
-      allow get, list: if isOwner(userId);
-      allow create: if isOwner(userId) && isValidInvoiceCreate(excelConfigurationId);
+    match /users/{userId}/invoices/{invoiceId} {
+      allow get, list, delete: if isOwner(userId);
+      allow create: if isOwner(userId) && isValidInvoiceCreate(userId);
       allow update: if isExistingOwner(userId) && isImmutableInvoiceUpdate();
-      allow delete: if isExistingOwner(userId);
     }
   }
 }

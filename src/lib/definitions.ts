@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+// This is the Zod schema for validating form input.
+// Note that the `date` is a `Date` object here.
 export const invoiceSchema = z.object({
   invoiceId: z.string().min(1, "Invoice ID is required."),
   customerName: z.string().min(1, "Customer name is required."),
@@ -8,12 +10,22 @@ export const invoiceSchema = z.object({
   status: z.enum(["Paid", "Pending", "Overdue"]),
 });
 
-export type Invoice = z.infer<typeof invoiceSchema> & {
+// This is the TypeScript type for an invoice as it is stored in Firestore.
+// It includes the document ID and the owner's user ID.
+// The `date` can be a Firestore Timestamp object or a string after being fetched.
+export type Invoice = {
   id: string;
+  userId: string;
+  invoiceId: string;
+  customerName: string;
+  amount: number;
+  date: Date | { seconds: number; nanoseconds: number };
+  status: "Paid" | "Pending" | "Overdue";
 };
 
+
 export type ColumnConfig = {
-  key: keyof Invoice;
+  key: keyof Invoice | 'actions';
   label: string;
   isVisible: boolean;
 };

@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState, useMemo, useRef } from "react";
+import React, { useState, useMemo, useRef, useEffect } from "react";
 import {
   Download,
   FileSpreadsheet,
@@ -17,13 +17,14 @@ import { InvoiceTable } from "@/components/invoice-table";
 import { InvoiceForm } from "@/components/invoice-form";
 import { ColumnCustomizer } from "@/components/column-customizer";
 import { useToast } from "@/hooks/use-toast";
-import { useUser, useFirestore, useMemoFirebase } from "@/firebase";
+import { useUser, useFirestore, useMemoFirebase, initiateAnonymousSignIn, useAuth } from "@/firebase";
 import {
   collection,
   addDoc,
   deleteDoc,
   doc,
   updateDoc,
+  serverTimestamp
 } from "firebase/firestore";
 import { useCollection } from "@/firebase/firestore/use-collection";
 import { extractInvoiceData } from "@/ai/flows/extract-invoice-flow";
@@ -47,43 +48,45 @@ export default function Home() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { toast } = useToast();
+  const auth = useAuth();
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
+
+  useEffect(() => {
+    if (!isUserLoading && !user) {
+      initiateAnonymousSignIn(auth);
+    }
+  }, [user, isUserLoading, auth]);
 
   const invoicesCollection = useMemoFirebase(
     () => (user ? collection(firestore, "users", user.uid, "invoices") : null),
     [firestore, user]
   );
+  
   const {
-    data: invoicesData,
+    data: invoices,
     isLoading: isInvoicesLoading,
     error,
-  } = useCollection<Omit<Invoice, "id">>(invoicesCollection);
+  } = useCollection<Invoice>(invoicesCollection);
   
-  const [localInvoices, setLocalInvoices] = useState<Invoice[]>([]);
-
-  const invoices = useMemo(() => {
-    const firestoreInvoices = invoicesData || [];
-    // Combine firestore data with local-only data
-    return [...firestoreInvoices, ...localInvoices];
-  }, [invoicesData, localInvoices]);
-
-
   const sortedInvoices = useMemo(
     () =>
       invoices
         ? [...invoices].sort(
-            (a, b) =>
-              new Date(b.date).getTime() - new Date(a.date).getTime()
+            (a, b) => {
+                const dateA = a.date instanceof Date ? a.date.getTime() : new Date(a.date).getTime();
+                const dateB = b.date instanceof Date ? b.date.getTime() : new Date(b.date).getTime();
+                return dateB - dateA;
+            }
           )
         : [],
     [invoices]
   );
 
-  const handleAddInvoice = async (invoice: Omit<Invoice, "id">) => {
-    if (!invoicesCollection) return;
+  const handleAddInvoice = async (invoice: Omit<Invoice, "id" | "userId">) => {
+    if (!invoicesCollection || !user) return;
     try {
-      await addDoc(invoicesCollection, invoice);
+      await addDoc(invoicesCollection, {...invoice, userId: user.uid });
       toast({
         title: "Success",
         description: "Invoice added successfully.",
@@ -100,22 +103,11 @@ export default function Home() {
   };
 
   const handleUpdateInvoice = async (invoice: Invoice) => {
-    // If invoice has no real ID, it's a local one, so we can't update it in firestore
-    if (!invoice.id || invoice.id.startsWith('local-')) {
-       setLocalInvoices(currentInvoices => 
-        currentInvoices.map(i => i.id === invoice.id ? invoice : i)
-       );
-       toast({
-        title: "Success",
-        description: "Invoice updated locally.",
-        variant: "default",
-      });
-      return;
-    }
     if (!user) return;
     const docRef = doc(firestore, "users", user.uid, "invoices", invoice.id);
     try {
-      await updateDoc(docRef, invoice);
+      const { id, ...invoiceData } = invoice;
+      await updateDoc(docRef, invoiceData);
       toast({
         title: "Success",
         description: "Invoice updated successfully.",
@@ -132,14 +124,6 @@ export default function Home() {
   };
 
   const handleDeleteInvoice = async (id: string) => {
-     if (id.startsWith('local-')) {
-      setLocalInvoices(currentInvoices => currentInvoices.filter(i => i.id !== id));
-      toast({
-        title: "Invoice Removed",
-        description: "The local invoice has been removed.",
-      });
-      return;
-    }
     if (!user) return;
     const docRef = doc(firestore, "users", user.uid, "invoices", id);
     try {
@@ -147,7 +131,6 @@ export default function Home() {
       toast({
         title: "Invoice Deleted",
         description: "The invoice has been removed.",
-        variant: "destructive",
       });
     } catch (e) {
       console.error("Error deleting document: ", e);
@@ -165,7 +148,10 @@ export default function Home() {
   };
 
   const escapeCsvCell = (cell: any) => {
-    const stringCell = String(cell ?? "");
+    if (cell === null || cell === undefined) {
+        return "";
+    }
+    const stringCell = String(cell);
     if (
       stringCell.includes(",") ||
       stringCell.includes('"') ||
@@ -185,6 +171,10 @@ export default function Home() {
           const value = invoice[c.key as keyof Invoice];
           if (value instanceof Date) {
             return escapeCsvCell(value.toLocaleDateString());
+          }
+          // Handle Firestore Timestamps
+          if (value && typeof value === 'object' && 'seconds' in value) {
+            return escapeCsvCell(new Date((value as any).seconds * 1000).toLocaleDateString());
           }
           return escapeCsvCell(value);
         })
@@ -213,7 +203,7 @@ export default function Home() {
     event: React.ChangeEvent<HTMLInputElement>
   ) => {
     const file = event.target.files?.[0];
-    if (!file) return;
+    if (!file || !user) return;
 
     setIsScanning(true);
     toast({
@@ -228,20 +218,20 @@ export default function Home() {
         const photoDataUri = reader.result as string;
         const extractedData = await extractInvoiceData({ photoDataUri });
         
-        const newInvoice: Invoice = {
-          id: `local-${Date.now()}`, // Create a temporary local ID
+        const newInvoice: Omit<Invoice, "id" | "userId"> = {
           invoiceId: extractedData.invoiceId,
           customerName: extractedData.customerName,
           amount: extractedData.amount,
+          // Ensure date is a valid Date object
           date: new Date(extractedData.date),
           status: extractedData.status,
         };
 
-        setLocalInvoices(currentInvoices => [...currentInvoices, newInvoice]);
+        await handleAddInvoice(newInvoice);
         
         toast({
           title: "Scan Complete!",
-          description: "Invoice data successfully extracted and added locally.",
+          description: "Invoice data successfully extracted and saved.",
         });
       };
       reader.onerror = (error) => {
@@ -268,6 +258,8 @@ export default function Home() {
     () => columns.filter((c) => c.isVisible),
     [columns]
   );
+  
+  const isLoading = isUserLoading || isInvoicesLoading;
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -287,12 +279,12 @@ export default function Home() {
                 onChange={handleImageUpload}
                 className="hidden"
                 accept="image/*"
-                disabled={isScanning}
+                disabled={isScanning || !user}
               />
               <Button
                 variant="outline"
                 onClick={() => fileInputRef.current?.click()}
-                disabled={isScanning}
+                disabled={isScanning || !user}
               >
                 {isScanning ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -301,7 +293,7 @@ export default function Home() {
                 )}
                 Scan Invoice
               </Button>
-              <Button onClick={() => handleOpenForm()} disabled={isScanning}>
+              <Button onClick={() => handleOpenForm()} disabled={isScanning || !user}>
                 <Plus className="mr-2 h-4 w-4" /> Add Invoice
               </Button>
             </div>
@@ -317,7 +309,7 @@ export default function Home() {
               <Button
                 variant="outline"
                 onClick={handleDownload}
-                disabled={invoices.length === 0 || isScanning}
+                disabled={!invoices || invoices.length === 0 || isScanning}
               >
                 <Download className="mr-2 h-4 w-4" /> Download
               </Button>
@@ -331,7 +323,7 @@ export default function Home() {
             </div>
           </CardHeader>
           <CardContent>
-            {isUserLoading || isInvoicesLoading ? (
+            {isLoading ? (
                <div className="flex justify-center items-center py-16">
                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
                </div>

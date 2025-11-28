@@ -58,10 +58,16 @@ export function InvoiceTable({
     const value = invoice[column.key as keyof Invoice];
     switch (column.key) {
       case "date":
+        let dateValue: Date;
         if (value instanceof Date) {
-            return format(value, "yyyy-MM-dd");
+            dateValue = value;
+        } else if (value && typeof value === 'object' && 'seconds' in value) {
+            dateValue = new Date((value as any).seconds * 1000);
+        } else {
+            return String(value); // Fallback
         }
-        return String(value);
+        return format(dateValue, "yyyy-MM-dd");
+
       case "amount":
         return (value as number).toLocaleString("en-US", {
           style: "currency",
@@ -87,12 +93,12 @@ export function InvoiceTable({
     }
   };
 
-  if (invoices.length === 0) {
+  if (!invoices || invoices.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center text-center py-16 text-muted-foreground">
         <FileX className="w-16 h-16 mb-4" />
         <h3 className="text-xl font-semibold">No Invoices Found</h3>
-        <p>Click 'Add Invoice' to get started.</p>
+        <p>Add an invoice or scan one to get started.</p>
       </div>
     );
   }

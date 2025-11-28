@@ -22,7 +22,7 @@ export type ExtractInvoiceInput = z.infer<typeof ExtractInvoiceInputSchema>;
 
 // This should align with the main Invoice schema, but without fields the AI can't determine (like 'id')
 const ExtractInvoiceOutputSchema = z.object({
-    invoiceId: z.string().describe("The unique identifier for the invoice (e.g., INV-2024-001)."),
+    invoiceId: z.string().describe("The unique identifier for the invoice (e.g., INV-2024-001). If not found, generate a plausible one."),
     customerName: z.string().describe("The name of the customer or company being invoiced."),
     amount: z.number().describe("The total amount due on the invoice."),
     date: z.string().describe("The date the invoice was issued, in YYYY-MM-DD format."),
@@ -42,6 +42,8 @@ const prompt = ai.definePrompt({
   prompt: `You are an expert accountant specializing in data entry. Your task is to extract structured data from the provided invoice image.
 
 Analyze the image and accurately pull out the following fields: Invoice ID, Customer Name, Total Amount, and Issue Date.
+
+If an Invoice ID is not explicitly present on the invoice, you must generate a plausible one (e.g., INV- followed by a sequence of numbers).
 
 Set the status to 'Pending' unless the invoice explicitly says it is 'Paid' or is clearly past its due date, in which case set it to 'Overdue'.
 
