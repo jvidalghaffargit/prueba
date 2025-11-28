@@ -53,7 +53,7 @@ export async function GET(request: NextRequest) {
         'Authorization': `Bearer ${accessToken}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(query)
+      body: JSON.stringify({ structuredQuery: query.structuredQuery })
     });
 
     if (!response.ok) {
