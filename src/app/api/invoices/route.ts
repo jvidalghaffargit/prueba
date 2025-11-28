@@ -2,10 +2,15 @@ import { google } from 'googleapis';
 import { NextRequest, NextResponse } from 'next/server';
 
 const PROJECT_ID = 'proyectoprueba-17be4';
+const PARENT_PATH = `projects/${PROJECT_ID}/databases/(default)/documents`;
 const COLLECTION_NAME = 'newinvoices';
 
 async function getServiceAccountClient() {
-  const serviceAccountJson = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON || '{}');
+  // This check is important. If the variable is not set, we should not proceed.
+  if (!process.env.GOOGLE_SERVICE_ACCOUNT_JSON) {
+    throw new Error("The GOOGLE_SERVICE_ACCOUNT_JSON environment variable is not set.");
+  }
+  const serviceAccountJson = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON);
   const jwtClient = new google.auth.JWT(
     serviceAccountJson.client_email,
     undefined,
@@ -30,8 +35,9 @@ export async function GET(request: NextRequest) {
     if (!userId) {
       return NextResponse.json({ error: 'User ID is required' }, { status: 400 });
     }
-
-    const firestoreUrl = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents:runQuery`;
+    
+    // Correctly construct the URL for runQuery
+    const firestoreUrl = `https://firestore.googleapis.com/v1/${PARENT_PATH}:runQuery`;
     
     const query = {
       structuredQuery: {
@@ -53,7 +59,7 @@ export async function GET(request: NextRequest) {
         'Authorization': `Bearer ${accessToken}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ structuredQuery: query.structuredQuery })
+      body: JSON.stringify(query) // Send the entire query object
     });
 
     if (!response.ok) {
@@ -64,7 +70,8 @@ export async function GET(request: NextRequest) {
 
     const queryResults = await response.json();
 
-    const invoices = queryResults.map((item: any) => {
+    const invoices = queryResults
+      .map((item: any) => {
         if (!item.document) return null;
         const doc = item.document;
         const fields = doc.fields;
@@ -85,7 +92,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(invoices);
   } catch (error: any) {
     console.error('Error fetching invoices:', error);
-    return NextResponse.json({ error: 'Internal Server Error', details: error.message }, { status: 500 });
+    // Be careful not to expose sensitive error details in production
+    const errorMessage = error.message || 'Internal Server Error';
+    return NextResponse.json({ error: 'Internal Server Error', details: errorMessage }, { status: 500 });
   }
 }
 
@@ -106,7 +115,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'User ID is required' }, { status: 400 });
     }
     
-    const firestoreUrl = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents/${COLLECTION_NAME}`;
+    const firestoreUrl = `https://firestore.googleapis.com/v1/${PARENT_PATH}/${COLLECTION_NAME}`;
 
     const newDoc = {
         fields: {
@@ -140,6 +149,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ id: id, ...invoiceData, userId }, { status: 201 });
   } catch (error: any) {
     console.error('Error saving invoice:', error);
-    return NextResponse.json({ error: 'Internal Server Error', details: error.message }, { status: 500 });
+    const errorMessage = error.message || 'Internal Server Error';
+    return NextResponse.json({ error: 'Internal Server Error', details: errorMessage }, { status: 500 });
   }
 }
