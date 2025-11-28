@@ -171,7 +171,13 @@ export default function Home() {
     if (cell === null || cell === undefined) {
         return "";
     }
-    const stringCell = String(cell);
+    
+    let stringCell = String(cell);
+
+    if (typeof cell === 'number') {
+        stringCell = stringCell.replace('.', ',');
+    }
+    
     if (
       stringCell.includes(",") ||
       stringCell.includes('"') ||
@@ -201,7 +207,7 @@ export default function Home() {
     );
 
     const csvContent = [header, ...rows].join("\n");
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const blob = new Blob(["\uFEFF" + csvContent], { type: "text/csv;charset=utf-8;" });
     const link = document.createElement("a");
     const url = URL.createObjectURL(blob);
     link.setAttribute("href", url);
@@ -390,4 +396,5 @@ export default function Home() {
 
     </div>
   );
-}
+
+    
