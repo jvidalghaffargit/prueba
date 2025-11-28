@@ -87,7 +87,7 @@
         }
       },
       {
-        "path": "/newinvoices/{newinvoiceId}",
+        "path": "/invoices/{invoiceId}",
         "definition": {
           "entityName": "Invoice",
           "schema": {

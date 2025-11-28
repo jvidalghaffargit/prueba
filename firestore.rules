@@ -7,7 +7,7 @@
  * Data Structure: The data is organized hierarchically to reflect ownership.
  * All user-related data, including invoices, is nested under the path /users/{userId}.
  *   - /users/{userId}
- *   - /newinvoices/{newinvoiceId}
+ *   - /invoices/{invoiceId}
  *
  * Key Security Decisions:
  * - Default Deny: All operations are denied unless explicitly allowed.
@@ -111,9 +111,9 @@ service cloud.firestore {
 
     /**
      * @description Controls access to invoices in the top-level collection.
-     * @path /newinvoices/{newinvoiceId}
+     * @path /invoices/{invoiceId}
      */
-    match /newinvoices/{newinvoiceId} {
+    match /invoices/{invoiceId} {
       allow read: if isSignedIn();
       allow create: if isResourceOwner(request.resource);
       allow update, delete: if isResourceOwner(resource);

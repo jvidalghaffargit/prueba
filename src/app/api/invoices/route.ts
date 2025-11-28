@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 const PROJECT_ID = 'proyectoprueba-17be4';
 const PARENT_PATH = `projects/${PROJECT_ID}/databases/(default)/documents`;
-const COLLECTION_NAME = 'newinvoices';
+const COLLECTION_NAME = 'invoices';
 
 async function getServiceAccountClient() {
   // This check is important. If the variable is not set, we should not proceed.
@@ -37,7 +37,6 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'User ID is required' }, { status: 400 });
     }
     
-    // Correctly construct the URL for runQuery
     const firestoreUrl = `https://firestore.googleapis.com/v1/${PARENT_PATH}:runQuery`;
     
     const query = {
@@ -60,7 +59,7 @@ export async function GET(request: NextRequest) {
         'Authorization': `Bearer ${accessToken}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(query) // Send the entire query object
+      body: JSON.stringify(query)
     });
 
     if (!response.ok) {
@@ -71,10 +70,9 @@ export async function GET(request: NextRequest) {
 
     const queryResults = await response.json();
 
-    // The response is an array of objects, each may contain a 'document'
     const invoices = queryResults
       .map((item: any) => {
-        if (!item.document) return null; // Skip items that are not documents
+        if (!item.document) return null;
         const doc = item.document;
         const fields = doc.fields;
         const id = doc.name.split('/').pop();
@@ -94,7 +92,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(invoices);
   } catch (error: any) {
     console.error('Error fetching invoices:', error);
-    // Be careful not to expose sensitive error details in production
     const errorMessage = error.message || 'Internal Server Error';
     return NextResponse.json({ error: 'Internal Server Error', details: errorMessage }, { status: 500 });
   }
