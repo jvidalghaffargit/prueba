@@ -71,9 +71,10 @@ export async function GET(request: NextRequest) {
 
     const queryResults = await response.json();
 
+    // The response is an array of objects, each may contain a 'document'
     const invoices = queryResults
       .map((item: any) => {
-        if (!item.document) return null;
+        if (!item.document) return null; // Skip items that are not documents
         const doc = item.document;
         const fields = doc.fields;
         const id = doc.name.split('/').pop();
