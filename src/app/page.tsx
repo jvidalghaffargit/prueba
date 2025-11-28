@@ -17,7 +17,8 @@ import { InvoiceTable } from "@/components/invoice-table";
 import { InvoiceForm } from "@/components/invoice-form";
 import { ColumnCustomizer } from "@/components/column-customizer";
 import { useToast } from "@/hooks/use-toast";
-import { useUser, initiateAnonymousSignIn, useAuth } from "@/firebase";
+import { useUser, initiateAnonymousSignIn, useAuth, useFirestore, useCollection, useMemoFirebase } from "@/firebase";
+import { collection, query, where, addDoc, serverTimestamp } from 'firebase/firestore';
 import { extractInvoiceData } from "@/ai/flows/extract-invoice-flow";
 
 const initialColumnsData: ColumnConfig[] = [
@@ -37,12 +38,10 @@ export default function Home() {
   );
   const [isScanning, setIsScanning] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
-  const [invoices, setInvoices] = useState<Invoice[]>([]);
-  const [isInvoicesLoading, setIsInvoicesLoading] = useState(true);
 
   const { toast } = useToast();
   const auth = useAuth();
+  const firestore = useFirestore();
   const { user, isUserLoading } = useUser();
 
   useEffect(() => {
@@ -51,61 +50,46 @@ export default function Home() {
     }
   }, [user, isUserLoading, auth]);
 
-  const fetchInvoices = async (userId: string) => {
-    setIsInvoicesLoading(true);
-    try {
-      const response = await fetch(`/api/invoices?userId=${userId}`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch invoices');
-      }
-      const data = await response.json();
-      setInvoices(data);
-    } catch (error) {
-      console.error(error);
+  const invoicesQuery = useMemoFirebase(() => {
+    if (!firestore || !user) return null;
+    return query(collection(firestore, "invoices"), where("userId", "==", user.uid));
+  }, [firestore, user]);
+
+  const { data: invoices, isLoading: isInvoicesLoading, error: invoicesError } = useCollection<Invoice>(invoicesQuery);
+
+   useEffect(() => {
+    if (invoicesError) {
+      console.error(invoicesError);
       toast({
         title: "Error",
         description: "Could not fetch invoices.",
         variant: "destructive",
       });
-    } finally {
-      setIsInvoicesLoading(false);
     }
-  };
+  }, [invoicesError, toast]);
 
-  useEffect(() => {
-    if (user) {
-      fetchInvoices(user.uid);
-    } else {
-      setInvoices([]);
-      setIsInvoicesLoading(false);
-    }
-  }, [user]);
 
-  const sortedInvoices = useMemo(
-    () =>
-      [...invoices].sort(
-            (a, b) => {
-                const dateA = a.date instanceof Date ? a.date.getTime() : new Date(a.date).getTime();
-                const dateB = b.date instanceof Date ? b.date.getTime() : new Date(b.date).getTime();
-                return dateB - dateA;
-            }
-          ),
-    [invoices]
-  );
+  const sortedInvoices = useMemo(() => {
+    if (!invoices) return [];
+    return [...invoices].sort(
+          (a, b) => {
+              const dateA = a.date instanceof Date ? a.date.getTime() : new Date((a.date as any).seconds * 1000).getTime();
+              const dateB = b.date instanceof Date ? b.date.getTime() : new Date((b.date as any).seconds * 1000).getTime();
+              return dateB - dateA;
+          }
+        );
+  }, [invoices]);
 
   const handleAddInvoice = async (invoice: Omit<Invoice, "id" | "userId">) => {
-    if (!user) return;
+    if (!user || !firestore) return;
     try {
-      const response = await fetch('/api/invoices', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...invoice, userId: user.uid }),
+      const collectionRef = collection(firestore, 'invoices');
+      await addDoc(collectionRef, {
+        ...invoice,
+        userId: user.uid,
+        createdAt: serverTimestamp(),
       });
-      if (!response.ok) {
-        throw new Error('Failed to add invoice');
-      }
-      const newInvoice = await response.json();
-      setInvoices(prev => [newInvoice, ...prev]);
+      
       toast({
         title: "Success",
         description: "Invoice added successfully.",
@@ -350,5 +334,3 @@ export default function Home() {
     </div>
   );
 }
-
-    
