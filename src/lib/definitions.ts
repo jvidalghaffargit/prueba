@@ -4,7 +4,7 @@ import { z } from "zod";
 // Note that the `date` is a `Date` object here.
 export const invoiceSchema = z.object({
   invoiceId: z.string().min(1, "Invoice ID is required."),
-  restaurantName: z.string().min(1, "Restaurant name is required."),
+  businessName: z.string().min(1, "Business name is required."),
   amount: z.coerce.number().positive("Amount must be a positive number."),
   date: z.date({ required_error: "Please select a date." }),
   status: z.enum(["Paid", "Pending", "Overdue"]),
@@ -17,7 +17,7 @@ export type Invoice = {
   id: string;
   userId: string;
   invoiceId: string;
-  restaurantName: string;
+  businessName: string;
   amount: number;
   date: Date | { seconds: number; nanoseconds: number };
   status: "Paid" | "Pending" | "Overdue";

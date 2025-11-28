@@ -24,7 +24,7 @@ import { extractInvoiceData } from "@/ai/flows/extract-invoice-flow";
 
 const initialColumnsData: ColumnConfig[] = [
   { key: "invoiceId", label: "Invoice ID", isVisible: true },
-  { key: "restaurantName", label: "Restaurant", isVisible: true },
+  { key: "businessName", label: "Business", isVisible: true },
   { key: "date", label: "Date", isVisible: true },
   { key: "amount", label: "Amount", isVisible: true },
   { key: "status", label: "Status", isVisible: true },
@@ -223,7 +223,7 @@ export default function Home() {
         
         const newInvoice: Omit<Invoice, "id" | "userId"> = {
           invoiceId: extractedData.invoiceId,
-          restaurantName: extractedData.restaurantName,
+          businessName: extractedData.businessName,
           amount: extractedData.amount,
           date: new Date(extractedData.date),
           status: extractedData.status,
@@ -271,7 +271,7 @@ export default function Home() {
             <div className="flex items-center space-x-3">
               <FileSpreadsheet className="h-8 w-8 text-primary" />
               <h1 className="text-2xl font-bold font-headline tracking-tight">
-                Restaurant Invoices
+                Business Invoices
               </h1>
             </div>
             <div className="flex items-center space-x-2">
@@ -357,5 +357,3 @@ export default function Home() {
     </div>
   );
 }
-
-    

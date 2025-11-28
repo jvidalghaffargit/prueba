@@ -71,7 +71,7 @@ export function InvoiceForm({
     resolver: zodResolver(invoiceSchema),
     defaultValues: {
       invoiceId: "",
-      restaurantName: "",
+      businessName: "",
       amount: 0,
       status: "Pending",
       date: undefined,
@@ -90,7 +90,7 @@ export function InvoiceForm({
             }
           : {
               invoiceId: "",
-              restaurantName: "",
+              businessName: "",
               amount: 0,
               status: "Pending",
               date: undefined,
@@ -134,10 +134,10 @@ export function InvoiceForm({
             />
             <FormField
               control={form.control}
-              name="restaurantName"
+              name="businessName"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Restaurant Name</FormLabel>
+                  <FormLabel>Business Name</FormLabel>
                   <FormControl>
                     <Input placeholder="e.g., The Gourmet Place" {...field} />
                   </FormControl>

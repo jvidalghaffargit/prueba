@@ -23,9 +23,9 @@
           "type": "number",
           "description": "The total amount of the invoice."
         },
-        "restaurantName": {
+        "businessName": {
           "type": "string",
-          "description": "The name of the restaurant associated with the invoice."
+          "description": "The name of the business associated with the invoice."
         },
         "status": {
             "type": "string",
@@ -41,7 +41,7 @@
         "invoiceId",
         "date",
         "amount",
-        "restaurantName",
+        "businessName",
         "status",
         "userId"
       ]
@@ -70,7 +70,6 @@
   },
   "auth": {
     "providers": [
-      "password",
       "anonymous"
     ]
   },

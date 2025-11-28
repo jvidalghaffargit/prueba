@@ -4,7 +4,7 @@ import { Toaster } from "@/components/ui/toaster"
 import { FirebaseClientProvider } from '@/firebase';
 
 export const metadata: Metadata = {
-  title: 'Restaurant Invoices',
+  title: 'Business Invoices',
   description: 'Easily create and export invoice data to Excel.',
 };
 
