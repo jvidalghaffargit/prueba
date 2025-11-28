@@ -17,18 +17,7 @@ import { InvoiceTable } from "@/components/invoice-table";
 import { InvoiceForm } from "@/components/invoice-form";
 import { ColumnCustomizer } from "@/components/column-customizer";
 import { useToast } from "@/hooks/use-toast";
-import { useUser, useFirestore, useMemoFirebase, initiateAnonymousSignIn, useAuth } from "@/firebase";
-import {
-  collection,
-  addDoc,
-  deleteDoc,
-  doc,
-  updateDoc,
-  serverTimestamp,
-  query,
-  where
-} from "firebase/firestore";
-import { useCollection } from "@/firebase/firestore/use-collection";
+import { useUser, initiateAnonymousSignIn, useAuth } from "@/firebase";
 import { extractInvoiceData } from "@/ai/flows/extract-invoice-flow";
 
 const initialColumnsData: ColumnConfig[] = [
@@ -48,11 +37,13 @@ export default function Home() {
   );
   const [isScanning, setIsScanning] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [isInvoicesLoading, setIsInvoicesLoading] = useState(true);
 
   const { toast } = useToast();
   const auth = useAuth();
   const { user, isUserLoading } = useUser();
-  const firestore = useFirestore();
 
   useEffect(() => {
     if (!isUserLoading && !user) {
@@ -60,43 +51,68 @@ export default function Home() {
     }
   }, [user, isUserLoading, auth]);
 
-  const invoicesQuery = useMemoFirebase(
-    () => (user && firestore ? query(collection(firestore, "newinvoices"), where("userId", "==", user.uid)) : null),
-    [firestore, user]
-  );
-  
-  const {
-    data: invoices,
-    isLoading: isInvoicesLoading,
-    error,
-  } = useCollection<Invoice>(invoicesQuery);
-  
+  const fetchInvoices = async (userId: string) => {
+    setIsInvoicesLoading(true);
+    try {
+      const response = await fetch(`/api/invoices?userId=${userId}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch invoices');
+      }
+      const data = await response.json();
+      setInvoices(data);
+    } catch (error) {
+      console.error(error);
+      toast({
+        title: "Error",
+        description: "Could not fetch invoices.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsInvoicesLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (user) {
+      fetchInvoices(user.uid);
+    } else {
+      setInvoices([]);
+      setIsInvoicesLoading(false);
+    }
+  }, [user]);
+
   const sortedInvoices = useMemo(
     () =>
-      invoices
-        ? [...invoices].sort(
+      [...invoices].sort(
             (a, b) => {
                 const dateA = a.date instanceof Date ? a.date.getTime() : new Date(a.date).getTime();
                 const dateB = b.date instanceof Date ? b.date.getTime() : new Date(b.date).getTime();
                 return dateB - dateA;
             }
-          )
-        : [],
+          ),
     [invoices]
   );
 
   const handleAddInvoice = async (invoice: Omit<Invoice, "id" | "userId">) => {
-    if (!firestore || !user) return;
-    const invoicesCollection = collection(firestore, "newinvoices");
+    if (!user) return;
     try {
-      await addDoc(invoicesCollection, {...invoice, userId: user.uid });
+      const response = await fetch('/api/invoices', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...invoice, userId: user.uid }),
+      });
+      if (!response.ok) {
+        throw new Error('Failed to add invoice');
+      }
+      const newInvoice = await response.json();
+      setInvoices(prev => [newInvoice, ...prev]);
       toast({
         title: "Success",
         description: "Invoice added successfully.",
         variant: "default",
       });
     } catch (e) {
-      console.error("Error adding document: ", e);
+      console.error("Error adding invoice: ", e);
       toast({
         title: "Error",
         description: "Could not add invoice.",
@@ -106,43 +122,21 @@ export default function Home() {
   };
 
   const handleUpdateInvoice = async (invoice: Invoice) => {
-    if (!firestore || !user) return;
-    const docRef = doc(firestore, "newinvoices", invoice.id);
-    try {
-      const { id, ...invoiceData } = invoice;
-      await updateDoc(docRef, invoiceData);
-      toast({
-        title: "Success",
-        description: "Invoice updated successfully.",
-        variant: "default",
+    // This would require a PUT/PATCH endpoint in the API
+    console.warn("Update functionality not implemented in API route yet.");
+    toast({
+        title: "Pending Feature",
+        description: "Updating invoices is not yet supported in this version.",
       });
-    } catch (e) {
-      console.error("Error updating document: ", e);
-      toast({
-        title: "Error",
-        description: "Could not update invoice.",
-        variant: "destructive",
-      });
-    }
   };
 
   const handleDeleteInvoice = async (id: string) => {
-    if (!firestore) return;
-    const docRef = doc(firestore, "newinvoices", id);
-    try {
-      await deleteDoc(docRef);
-      toast({
-        title: "Invoice Deleted",
-        description: "The invoice has been removed.",
+     // This would require a DELETE endpoint in the API
+     console.warn("Delete functionality not implemented in API route yet.");
+     toast({
+        title: "Pending Feature",
+        description: "Deleting invoices is not yet supported in this version.",
       });
-    } catch (e) {
-      console.error("Error deleting document: ", e);
-      toast({
-        title: "Error",
-        description: "Could not delete invoice.",
-        variant: "destructive",
-      });
-    }
   };
 
   const handleOpenForm = (invoice?: Invoice) => {
@@ -175,7 +169,6 @@ export default function Home() {
           if (value instanceof Date) {
             return escapeCsvCell(value.toLocaleDateString());
           }
-          // Handle Firestore Timestamps
           if (value && typeof value === 'object' && 'seconds' in value) {
             return escapeCsvCell(new Date((value as any).seconds * 1000).toLocaleDateString());
           }
@@ -357,3 +350,5 @@ export default function Home() {
     </div>
   );
 }
+
+    
