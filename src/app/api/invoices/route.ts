@@ -145,7 +145,14 @@ export async function POST(request: NextRequest) {
     const createdDoc = await response.json();
     const id = createdDoc.name.split('/').pop();
 
-    return NextResponse.json({ id: id, ...invoiceData, userId }, { status: 201 });
+    const result = {
+      id,
+      userId,
+      ...invoiceData,
+      date: createdDoc.fields.date.timestampValue
+    };
+
+    return NextResponse.json(result, { status: 201 });
   } catch (error: any) {
     console.error('Error saving invoice:', error);
     const errorMessage = error.message || 'Internal Server Error';

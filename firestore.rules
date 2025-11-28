@@ -111,10 +111,13 @@ service cloud.firestore {
 
     /**
      * @description Controls access to invoices in the top-level collection.
+     * Only the user associated with an invoice (via the userId field) can interact with it.
+     * Listing invoices is allowed, but the query from the client MUST include a
+     * 'where("userId", "==", request.auth.uid)' clause to be allowed.
      * @path /invoices/{invoiceId}
      */
     match /invoices/{invoiceId} {
-      allow read: if isSignedIn();
+      allow get, list: if isSignedIn() && isResourceOwner(resource);
       allow create: if isResourceOwner(request.resource);
       allow update, delete: if isResourceOwner(resource);
     }
