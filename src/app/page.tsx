@@ -248,7 +248,7 @@ export default function Home() {
             <div className="flex items-center space-x-3">
               <FileSpreadsheet className="h-8 w-8 text-primary" />
               <h1 className="text-2xl font-bold font-headline tracking-tight">
-                ExcelSaver
+                Restaurant Invoices
               </h1>
             </div>
             <div className="flex items-center space-x-2">
