@@ -60,7 +60,14 @@ export default function Home() {
     error,
   } = useCollection<Omit<Invoice, "id">>(invoicesCollection);
   
-  const invoices = invoicesData || [];
+  const [localInvoices, setLocalInvoices] = useState<Invoice[]>([]);
+
+  const invoices = useMemo(() => {
+    const firestoreInvoices = invoicesData || [];
+    // Combine firestore data with local-only data
+    return [...firestoreInvoices, ...localInvoices];
+  }, [invoicesData, localInvoices]);
+
 
   const sortedInvoices = useMemo(
     () =>
@@ -93,6 +100,18 @@ export default function Home() {
   };
 
   const handleUpdateInvoice = async (invoice: Invoice) => {
+    // If invoice has no real ID, it's a local one, so we can't update it in firestore
+    if (!invoice.id || invoice.id.startsWith('local-')) {
+       setLocalInvoices(currentInvoices => 
+        currentInvoices.map(i => i.id === invoice.id ? invoice : i)
+       );
+       toast({
+        title: "Success",
+        description: "Invoice updated locally.",
+        variant: "default",
+      });
+      return;
+    }
     if (!user) return;
     const docRef = doc(firestore, "users", user.uid, "invoices", invoice.id);
     try {
@@ -113,6 +132,14 @@ export default function Home() {
   };
 
   const handleDeleteInvoice = async (id: string) => {
+     if (id.startsWith('local-')) {
+      setLocalInvoices(currentInvoices => currentInvoices.filter(i => i.id !== id));
+      toast({
+        title: "Invoice Removed",
+        description: "The local invoice has been removed.",
+      });
+      return;
+    }
     if (!user) return;
     const docRef = doc(firestore, "users", user.uid, "invoices", id);
     try {
@@ -201,8 +228,8 @@ export default function Home() {
         const photoDataUri = reader.result as string;
         const extractedData = await extractInvoiceData({ photoDataUri });
         
-        // Map AI output to the structure expected by handleAddInvoice
-        const invoiceData = {
+        const newInvoice: Invoice = {
+          id: `local-${Date.now()}`, // Create a temporary local ID
           invoiceId: extractedData.invoiceId,
           customerName: extractedData.customerName,
           amount: extractedData.amount,
@@ -210,10 +237,11 @@ export default function Home() {
           status: extractedData.status,
         };
 
-        await handleAddInvoice(invoiceData);
+        setLocalInvoices(currentInvoices => [...currentInvoices, newInvoice]);
+        
         toast({
           title: "Scan Complete!",
-          description: "Invoice data successfully extracted and added.",
+          description: "Invoice data successfully extracted and added locally.",
         });
       };
       reader.onerror = (error) => {
@@ -230,7 +258,6 @@ export default function Home() {
       });
     } finally {
       setIsScanning(false);
-      // Reset file input
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
       }
