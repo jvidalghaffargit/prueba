@@ -9,6 +9,8 @@ import {
   Settings,
   ScanLine,
   Loader2,
+  Calendar as CalendarIcon,
+  X as XIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -31,6 +33,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Input } from "@/components/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { format, startOfDay, endOfDay } from "date-fns";
+import { DateRange } from "react-day-picker";
+import { cn } from "@/lib/utils";
 
 const initialColumnsData: ColumnConfig[] = [
   { key: "invoiceId", label: "Invoice ID", isVisible: true },
@@ -49,6 +57,8 @@ export default function Home() {
   const [isScanning, setIsScanning] = useState(false);
   const [invoiceToDelete, setInvoiceToDelete] = useState<Invoice | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
 
   const { toast } = useToast();
   const auth = useAuth();
@@ -80,16 +90,47 @@ export default function Home() {
   }, [invoicesError, toast]);
 
 
-  const sortedInvoices = useMemo(() => {
+  const filteredAndSortedInvoices = useMemo(() => {
     if (!invoices) return [];
-    return [...invoices].sort(
+    
+    let filtered = [...invoices];
+
+    // Search term filter
+    if (searchTerm) {
+        const lowercasedTerm = searchTerm.toLowerCase();
+        filtered = filtered.filter(invoice => 
+            invoice.businessName.toLowerCase().includes(lowercasedTerm) ||
+            invoice.invoiceId.toLowerCase().includes(lowercasedTerm)
+        );
+    }
+
+    // Date range filter
+    if (dateRange?.from) {
+        const fromDate = startOfDay(dateRange.from);
+        const toDate = dateRange.to ? endOfDay(dateRange.to) : endOfDay(dateRange.from);
+        
+        filtered = filtered.filter(invoice => {
+            const invoiceDate = invoice.date instanceof Date ? invoice.date : new Date((invoice.date as any).seconds * 1000);
+            return invoiceDate >= fromDate && invoiceDate <= toDate;
+        });
+    }
+
+    // Sort by date descending
+    return filtered.sort(
           (a, b) => {
               const dateA = a.date instanceof Date ? a.date.getTime() : new Date((a.date as any).seconds * 1000).getTime();
               const dateB = b.date instanceof Date ? b.date.getTime() : new Date((b.date as any).seconds * 1000).getTime();
               return dateB - dateA;
           }
         );
-  }, [invoices]);
+  }, [invoices, searchTerm, dateRange]);
+  
+  const resetFilters = () => {
+    setSearchTerm("");
+    setDateRange(undefined);
+  };
+  
+  const areFiltersActive = searchTerm || dateRange;
 
   const handleAddInvoice = async (invoice: Omit<Invoice, "id" | "userId">) => {
     if (!user || !firestore) return;
@@ -191,7 +232,7 @@ export default function Home() {
   const handleDownload = () => {
     const visibleColumns = columns.filter((c) => c.isVisible);
     const header = visibleColumns.map((c) => escapeCsvCell(c.label)).join(",");
-    const rows = sortedInvoices.map((invoice) =>
+    const rows = filteredAndSortedInvoices.map((invoice) =>
       visibleColumns
         .map((c) => {
           const value = invoice[c.key as keyof Invoice];
@@ -326,13 +367,65 @@ export default function Home() {
 
       <main className="flex-1 container mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Card className="shadow-lg">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0">
-            <CardTitle>Your Invoices</CardTitle>
-            <div className="flex space-x-2">
+          <CardHeader>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center sm:justify-between gap-4">
+              <CardTitle>Your Invoices</CardTitle>
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2 w-full sm:w-auto">
+                <Input
+                  placeholder="Search by business or ID..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full sm:w-48 md:w-64"
+                />
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      id="date"
+                      variant={"outline"}
+                      className={cn(
+                        "w-full sm:w-[260px] justify-start text-left font-normal",
+                        !dateRange && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {dateRange?.from ? (
+                        dateRange.to ? (
+                          <>
+                            {format(dateRange.from, "LLL dd, y")} -{" "}
+                            {format(dateRange.to, "LLL dd, y")}
+                          </>
+                        ) : (
+                          format(dateRange.from, "LLL dd, y")
+                        )
+                      ) : (
+                        <span>Pick a date range</span>
+                      )}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="end">
+                    <Calendar
+                      initialFocus
+                      mode="range"
+                      defaultMonth={dateRange?.from}
+                      selected={dateRange}
+                      onSelect={setDateRange}
+                      numberOfMonths={2}
+                    />
+                  </PopoverContent>
+                </Popover>
+                {areFiltersActive && (
+                  <Button variant="ghost" onClick={resetFilters} className="w-full sm:w-auto">
+                    <XIcon className="mr-2 h-4 w-4" />
+                    Reset
+                  </Button>
+                )}
+              </div>
+            </div>
+            <div className="flex flex-row items-center justify-end space-x-2 pt-4">
               <Button
                 variant="outline"
                 onClick={handleDownload}
-                disabled={!invoices || invoices.length === 0 || isScanning}
+                disabled={!filteredAndSortedInvoices || filteredAndSortedInvoices.length === 0 || isScanning}
               >
                 <Download className="mr-2 h-4 w-4" /> Download
               </Button>
@@ -352,7 +445,7 @@ export default function Home() {
                </div>
             ) : (
               <InvoiceTable
-                invoices={sortedInvoices}
+                invoices={filteredAndSortedInvoices}
                 columns={visibleColumns}
                 onEdit={handleOpenForm}
                 onDelete={confirmDeleteInvoice}
@@ -396,5 +489,7 @@ export default function Home() {
 
     </div>
   );
+
+    
 
     
