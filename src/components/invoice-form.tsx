@@ -71,6 +71,8 @@ export function InvoiceForm({
   invoice,
   businessNames,
 }: InvoiceFormProps) {
+  const [popoverOpen, setPopoverOpen] = useState(false);
+  
   const form = useForm<z.infer<typeof invoiceSchema>>({
     resolver: zodResolver(invoiceSchema),
     defaultValues: {
@@ -140,12 +142,13 @@ export function InvoiceForm({
               render={({ field }) => (
                 <FormItem className="flex flex-col">
                   <FormLabel>Business Name</FormLabel>
-                  <Popover>
+                  <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
                     <PopoverTrigger asChild>
                       <FormControl>
                         <Button
                           variant="outline"
                           role="combobox"
+                          aria-expanded={popoverOpen}
                           className={cn(
                             "w-full justify-between",
                             !field.value && "text-muted-foreground"
@@ -158,7 +161,11 @@ export function InvoiceForm({
                     </PopoverTrigger>
                     <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
                       <Command>
-                        <CommandInput placeholder="Search or add business..." />
+                        <CommandInput 
+                          placeholder="Search or add business..."
+                          value={field.value}
+                          onValueChange={(currentValue) => form.setValue("businessName", currentValue)}
+                        />
                         <CommandList>
                           <CommandEmpty>No business found.</CommandEmpty>
                           <CommandGroup>
@@ -166,8 +173,9 @@ export function InvoiceForm({
                               <CommandItem
                                 value={name}
                                 key={name}
-                                onSelect={() => {
-                                  form.setValue("businessName", name);
+                                onSelect={(currentValue) => {
+                                  form.setValue("businessName", currentValue === field.value ? "" : currentValue);
+                                  setPopoverOpen(false);
                                 }}
                               >
                                 <Check
