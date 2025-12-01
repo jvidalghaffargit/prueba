@@ -13,7 +13,7 @@ import {
   X as XIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import type { Invoice, ColumnConfig } from "@/lib/definitions";
 import { InvoiceTable } from "@/components/invoice-table";
 import { InvoiceForm } from "@/components/invoice-form";
@@ -47,6 +47,8 @@ const initialColumnsData: ColumnConfig[] = [
   { key: "amount", label: "Amount", isVisible: true },
 ];
 
+const ITEMS_PER_PAGE = 10;
+
 export default function Home() {
   const [columns, setColumns] = useState<ColumnConfig[]>(initialColumnsData);
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -59,6 +61,7 @@ export default function Home() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
+  const [currentPage, setCurrentPage] = useState(1);
 
   const { toast } = useToast();
   const auth = useAuth();
@@ -125,6 +128,19 @@ export default function Home() {
         );
   }, [invoices, searchTerm, dateRange]);
   
+  // Reset to first page whenever filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, dateRange]);
+
+  const totalPages = Math.ceil(filteredAndSortedInvoices.length / ITEMS_PER_PAGE);
+
+  const paginatedInvoices = useMemo(() => {
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    const endIndex = startIndex + ITEMS_PER_PAGE;
+    return filteredAndSortedInvoices.slice(startIndex, endIndex);
+  }, [filteredAndSortedInvoices, currentPage]);
+
   const resetFilters = () => {
     setSearchTerm("");
     setDateRange(undefined);
@@ -445,13 +461,38 @@ export default function Home() {
                </div>
             ) : (
               <InvoiceTable
-                invoices={filteredAndSortedInvoices}
+                invoices={paginatedInvoices}
                 columns={visibleColumns}
                 onEdit={handleOpenForm}
                 onDelete={confirmDeleteInvoice}
               />
             )}
           </CardContent>
+          {totalPages > 1 && (
+            <CardFooter>
+              <div className="text-xs text-muted-foreground">
+                Page {currentPage} of {totalPages}
+              </div>
+              <div className="flex items-center space-x-2 ml-auto">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                  disabled={currentPage === 1}
+                >
+                  Previous
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                  disabled={currentPage === totalPages}
+                >
+                  Next
+                </Button>
+              </div>
+            </CardFooter>
+          )}
         </Card>
       </main>
 
@@ -489,7 +530,6 @@ export default function Home() {
 
     </div>
   );
-
-    
+}
 
     
