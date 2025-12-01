@@ -127,6 +127,12 @@ export default function Home() {
           }
         );
   }, [invoices, searchTerm, dateRange]);
+
+  const businessNames = useMemo(() => {
+    if (!invoices) return [];
+    const names = invoices.map(invoice => invoice.businessName);
+    return [...new Set(names)];
+  }, [invoices]);
   
   // Reset to first page whenever filters change
   useEffect(() => {
@@ -501,6 +507,7 @@ export default function Home() {
         onClose={() => setIsFormOpen(false)}
         onSave={invoiceToEdit ? handleUpdateInvoice : handleAddInvoice}
         invoice={invoiceToEdit}
+        businessNames={businessNames}
       />
 
       <ColumnCustomizer
@@ -531,5 +538,3 @@ export default function Home() {
     </div>
   );
 }
-
-    

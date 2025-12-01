@@ -1,10 +1,11 @@
+
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { CalendarIcon, Loader2 } from "lucide-react";
+import { CalendarIcon, Loader2, Check, ChevronsUpDown } from "lucide-react";
 import { format } from "date-fns";
 
 import { Button } from "@/components/ui/button";
@@ -30,6 +31,14 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import type { Invoice } from "@/lib/definitions";
@@ -40,6 +49,7 @@ type InvoiceFormProps = {
   onClose: () => void;
   onSave: (invoice: Omit<Invoice, "id"> | Invoice) => void;
   invoice?: Invoice;
+  businessNames: string[];
 };
 
 // Helper to convert Firestore Timestamp to JS Date
@@ -59,6 +69,7 @@ export function InvoiceForm({
   onClose,
   onSave,
   invoice,
+  businessNames,
 }: InvoiceFormProps) {
   const form = useForm<z.infer<typeof invoiceSchema>>({
     resolver: zodResolver(invoiceSchema),
@@ -127,11 +138,54 @@ export function InvoiceForm({
               control={form.control}
               name="businessName"
               render={({ field }) => (
-                <FormItem>
+                <FormItem className="flex flex-col">
                   <FormLabel>Business Name</FormLabel>
-                  <FormControl>
-                    <Input placeholder="e.g., The Gourmet Place" {...field} />
-                  </FormControl>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <FormControl>
+                        <Button
+                          variant="outline"
+                          role="combobox"
+                          className={cn(
+                            "w-full justify-between",
+                            !field.value && "text-muted-foreground"
+                          )}
+                        >
+                          {field.value || "Select or create a business"}
+                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                      </FormControl>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                      <Command>
+                        <CommandInput placeholder="Search or add business..." />
+                        <CommandList>
+                          <CommandEmpty>No business found.</CommandEmpty>
+                          <CommandGroup>
+                            {businessNames.map((name) => (
+                              <CommandItem
+                                value={name}
+                                key={name}
+                                onSelect={() => {
+                                  form.setValue("businessName", name);
+                                }}
+                              >
+                                <Check
+                                  className={cn(
+                                    "mr-2 h-4 w-4",
+                                    name === field.value
+                                      ? "opacity-100"
+                                      : "opacity-0"
+                                  )}
+                                />
+                                {name}
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
                   <FormMessage />
                 </FormItem>
               )}
