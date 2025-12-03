@@ -25,7 +25,7 @@ const ExtractInvoiceOutputSchema = z.object({
     invoiceId: z.string().describe("The unique identifier for the invoice (e.g., INV-2024-001). If not found, generate a plausible one."),
     businessName: z.string().describe("The name of the business or company being invoiced."),
     cif: z.string().optional().describe("The tax ID (CIF/NIF) of the business, if present."),
-    address: z.string().optional().describe("The physical address of the business, if present."),
+    address: z.string().optional().describe("The physical address of the business being invoiced. This is a critical field to extract if present."),
     amount: z.number().describe("The total amount due on the invoice."),
     date: z.string().describe("The date the invoice was issued, in YYYY-MM-DD format."),
 });
@@ -42,7 +42,7 @@ const prompt = ai.definePrompt({
   output: {schema: ExtractInvoiceOutputSchema},
   prompt: `You are an expert accountant specializing in data entry. Your task is to extract structured data from the provided invoice image.
 
-Analyze the image and accurately pull out the following fields: Invoice ID, Business Name, Business Tax ID (CIF/NIF), Business Address, Total Amount, and Issue Date.
+Analyze the image and accurately pull out the following fields: Invoice ID, Business Name, Business Tax ID (CIF/NIF), Business Address, Total Amount, and Issue Date. Pay special attention to extracting the full Business Address.
 
 If an Invoice ID is not explicitly present on the invoice, you must generate a plausible one (e.g., INV- followed by a sequence of numbers).
 
