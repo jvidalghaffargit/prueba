@@ -263,9 +263,11 @@ export default function Home() {
   };
 
   const handleDownload = () => {
+    if (!invoices) return;
+
     const visibleColumns = columns.filter((c) => c.isVisible);
     const header = visibleColumns.map((c) => escapeCsvCell(c.label)).join(",");
-    const rows = filteredAndSortedInvoices.map((invoice) =>
+    const rows = invoices.map((invoice) =>
       visibleColumns
         .map((c) => {
           const value = invoice[c.key as keyof Invoice];
@@ -491,7 +493,7 @@ export default function Home() {
               <Button
                 variant="outline"
                 onClick={handleDownload}
-                disabled={!filteredAndSortedInvoices || filteredAndSortedInvoices.length === 0 || isScanning}
+                disabled={!invoices || invoices.length === 0 || isScanning}
               >
                 <Download className="mr-2 h-4 w-4" /> Download
               </Button>
@@ -582,3 +584,5 @@ export default function Home() {
     </div>
   );
 }
+
+    
