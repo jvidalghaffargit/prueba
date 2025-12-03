@@ -43,6 +43,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import type { Invoice } from "@/lib/definitions";
 import { invoiceSchema } from "@/lib/definitions";
+import { Textarea } from "@/components/ui/textarea";
 
 type InvoiceFormProps = {
   isOpen: boolean;
@@ -64,6 +65,18 @@ const toDate = (value: Invoice['date']): Date | undefined => {
   return isNaN(parsed.getTime()) ? undefined : parsed;
 }
 
+const defaultValues = {
+  invoiceId: "",
+  businessName: "",
+  cif: "",
+  address: "",
+  concept: "",
+  amount: 0,
+  date: undefined,
+  vatRate: 21,
+  vatAmount: 0,
+};
+
 export function InvoiceForm({
   isOpen,
   onClose,
@@ -76,10 +89,7 @@ export function InvoiceForm({
   const form = useForm<z.infer<typeof invoiceSchema>>({
     resolver: zodResolver(invoiceSchema),
     defaultValues: {
-      invoiceId: "",
-      businessName: "",
-      amount: 0,
-      date: undefined,
+      ...defaultValues,
       ...invoice,
       date: invoice ? toDate(invoice.date) : undefined,
     },
@@ -93,15 +103,21 @@ export function InvoiceForm({
               ...invoice,
               date: toDate(invoice.date),
             }
-          : {
-              invoiceId: "",
-              businessName: "",
-              amount: 0,
-              date: undefined,
-            }
+          : defaultValues
       );
     }
   }, [invoice, isOpen, form]);
+
+  const amount = form.watch("amount");
+  const vatRate = form.watch("vatRate");
+
+  useEffect(() => {
+    if (typeof amount === 'number' && typeof vatRate === 'number') {
+      const vat = (amount * vatRate) / 100;
+      form.setValue("vatAmount", parseFloat(vat.toFixed(2)));
+    }
+  }, [amount, vatRate, form]);
+
 
   const onSubmit = (values: z.infer<typeof invoiceSchema>) => {
     if (invoice) {
@@ -114,7 +130,7 @@ export function InvoiceForm({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>{invoice ? "Edit Invoice" : "Add New Invoice"}</DialogTitle>
           <DialogDescription>
@@ -122,20 +138,64 @@ export function InvoiceForm({
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
-            <FormField
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4 max-h-[70vh] overflow-y-auto pr-4">
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="invoiceId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Invoice ID</FormLabel>
+                    <FormControl>
+                      <Input placeholder="e.g., INV-2024-004" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
               control={form.control}
-              name="invoiceId"
+              name="date"
               render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Invoice ID</FormLabel>
-                  <FormControl>
-                    <Input placeholder="e.g., INV-2024-004" {...field} />
-                  </FormControl>
+                  <FormItem className="flex flex-col">
+                  <FormLabel>Invoice Date</FormLabel>
+                  <Popover>
+                      <PopoverTrigger asChild>
+                      <FormControl>
+                          <Button
+                          variant={"outline"}
+                          className={cn(
+                              "w-full pl-3 text-left font-normal",
+                              !field.value && "text-muted-foreground"
+                          )}
+                          >
+                          {field.value ? (
+                              format(field.value, "PPP")
+                          ) : (
+                              <span>Pick a date</span>
+                          )}
+                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                          </Button>
+                      </FormControl>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                          mode="single"
+                          selected={field.value}
+                          onSelect={field.onChange}
+                          disabled={(date) =>
+                              date > new Date() || date < new Date("1900-01-01")
+                          }
+                          initialFocus
+                      />
+                      </PopoverContent>
+                  </Popover>
                   <FormMessage />
-                </FormItem>
+                  </FormItem>
               )}
-            />
+              />
+            </div>
+
             <FormField
               control={form.control}
               name="businessName"
@@ -198,62 +258,92 @@ export function InvoiceForm({
                 </FormItem>
               )}
             />
+            
             <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="cif"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>CIF/NIF</FormLabel>
+                    <FormControl>
+                      <Input placeholder="e.g., B12345678" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="address"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Address</FormLabel>
+                    <FormControl>
+                      <Input placeholder="e.g., C/ Falsa, 123" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <FormField
+              control={form.control}
+              name="concept"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Concept</FormLabel>
+                  <FormControl>
+                    <Textarea placeholder="Description of the service or product..." {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <div className="grid grid-cols-3 gap-4">
                 <FormField
                     control={form.control}
                     name="amount"
                     render={({ field }) => (
                         <FormItem>
-                        <FormLabel>Amount</FormLabel>
+                        <FormLabel>Base Amount</FormLabel>
                         <FormControl>
-                            <Input type="number" placeholder="e.g., 1500.00" {...field} />
+                            <Input type="number" placeholder="e.g., 100.00" {...field} />
                         </FormControl>
                         <FormMessage />
                         </FormItem>
                     )}
                 />
                 <FormField
-                control={form.control}
-                name="date"
-                render={({ field }) => (
-                    <FormItem className="flex flex-col">
-                    <FormLabel>Invoice Date</FormLabel>
-                    <Popover>
-                        <PopoverTrigger asChild>
+                    control={form.control}
+                    name="vatRate"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>VAT Rate (%)</FormLabel>
                         <FormControl>
-                            <Button
-                            variant={"outline"}
-                            className={cn(
-                                "w-full pl-3 text-left font-normal",
-                                !field.value && "text-muted-foreground"
-                            )}
-                            >
-                            {field.value ? (
-                                format(field.value, "PPP")
-                            ) : (
-                                <span>Pick a date</span>
-                            )}
-                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                            </Button>
+                            <Input type="number" placeholder="e.g., 21" {...field} />
                         </FormControl>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar
-                            mode="single"
-                            selected={field.value}
-                            onSelect={field.onChange}
-                            disabled={(date) =>
-                                date > new Date() || date < new Date("1900-01-01")
-                            }
-                            initialFocus
-                        />
-                        </PopoverContent>
-                    </Popover>
-                    <FormMessage />
-                    </FormItem>
-                )}
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                />
+                <FormField
+                    control={form.control}
+                    name="vatAmount"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>VAT Amount</FormLabel>
+                        <FormControl>
+                            <Input type="number" placeholder="e.g., 21.00" {...field} readOnly className="bg-muted"/>
+                        </FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )}
                 />
             </div>
+            
             <DialogFooter>
               <Button type="button" variant="ghost" onClick={onClose}>
                 Cancel

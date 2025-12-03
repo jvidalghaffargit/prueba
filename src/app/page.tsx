@@ -45,6 +45,11 @@ const initialColumnsData: ColumnConfig[] = [
   { key: "businessName", label: "Business", isVisible: true },
   { key: "date", label: "Date", isVisible: true },
   { key: "amount", label: "Amount", isVisible: true },
+  { key: "cif", label: "CIF", isVisible: false },
+  { key: "address", label: "Address", isVisible: false },
+  { key: "concept", label: "Concept", isVisible: false },
+  { key: "vatRate", label: "VAT Rate", isVisible: false },
+  { key: "vatAmount", label: "VAT Amount", isVisible: false },
 ];
 
 const ITEMS_PER_PAGE = 10;
@@ -311,6 +316,8 @@ export default function Home() {
           businessName: extractedData.businessName,
           amount: extractedData.amount,
           date: new Date(extractedData.date),
+          cif: extractedData.cif,
+          address: extractedData.address,
         };
 
         await handleAddInvoice(newInvoice);

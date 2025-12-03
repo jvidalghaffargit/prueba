@@ -60,12 +60,15 @@ export function InvoiceTable({
         return "Invalid Date";
 
       case "amount":
-        return (value as number).toLocaleString("en-US", {
+      case "vatAmount":
+        return (value as number)?.toLocaleString("en-US", {
           style: "currency",
           currency: "USD",
-        });
+        }) || (0).toLocaleString("en-US", { style: "currency", currency: "USD" });
+      case "vatRate":
+         return value ? `${value}%` : 'N/A';
       default:
-        return value as string | number;
+        return (value as string | number) || "N/A";
     }
   };
 

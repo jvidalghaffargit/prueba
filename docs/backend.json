@@ -11,8 +11,8 @@
           "description": "Unique identifier for the Invoice entity."
         },
         "invoiceId": {
-            "type": "string",
-            "description": "The user-facing invoice identifier (e.g. INV-2024-001)."
+          "type": "string",
+          "description": "The user-facing invoice identifier (e.g. INV-2024-001)."
         },
         "date": {
           "type": "string",
@@ -26,6 +26,26 @@
         "businessName": {
           "type": "string",
           "description": "The name of the business associated with the invoice."
+        },
+        "cif": {
+          "type": "string",
+          "description": "The tax ID (CIF) of the business."
+        },
+        "address": {
+          "type": "string",
+          "description": "The address of the business."
+        },
+        "concept": {
+          "type": "string",
+          "description": "The concept or description of the invoice."
+        },
+        "vatRate": {
+          "type": "number",
+          "description": "The VAT rate applied (e.g., 21 for 21%)."
+        },
+        "vatAmount": {
+          "type": "number",
+          "description": "The calculated VAT amount."
         },
         "userId": {
           "type": "string",
