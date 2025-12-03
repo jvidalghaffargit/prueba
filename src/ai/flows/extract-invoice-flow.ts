@@ -23,9 +23,9 @@ export type ExtractInvoiceInput = z.infer<typeof ExtractInvoiceInputSchema>;
 // This should align with the main Invoice schema, but without fields the AI can't determine (like 'id')
 const ExtractInvoiceOutputSchema = z.object({
     invoiceId: z.string().describe("The unique identifier for the invoice (e.g., INV-2024-001). If not found, generate a plausible one."),
-    businessName: z.string().describe("The name of the business or company being invoiced. This is the main recipient of the invoice."),
-    cif: z.string().optional().describe("The Tax ID (CIF, NIF, or equivalent) of the business. This is a critical, high-priority field to extract if present. It might be labeled as CIF, NIF, VAT ID, or Tax ID."),
-    address: z.string().optional().describe("The full physical address of the business being invoiced. This is a critical field to extract if present."),
+    businessName: z.string().describe("The name of the business or company that ISSUED the invoice. This is the sender of the invoice."),
+    cif: z.string().optional().describe("The Tax ID (CIF, NIF, or equivalent) of the business that ISSUED the invoice. This is a critical, high-priority field to extract if present."),
+    address: z.string().optional().describe("The full physical address of the business that ISSUED the invoice. This is a critical field to extract if present."),
     amount: z.number().describe("The total amount due on the invoice."),
     date: z.string().describe("The date the invoice was issued, in YYYY-MM-DD format."),
 });
@@ -40,13 +40,15 @@ const prompt = ai.definePrompt({
   name: 'extractInvoicePrompt',
   input: {schema: ExtractInvoiceInputSchema},
   output: {schema: ExtractInvoiceOutputSchema},
-  prompt: `You are an expert accountant specializing in precise data entry. Your task is to extract structured data from the provided invoice image.
+  prompt: `You are an expert accountant. Your task is to extract structured data from the provided invoice image.
 
-Analyze the image and accurately pull out the following fields for the business being billed:
+IMPORTANT: You must extract information about the company that SENT or ISSUED the invoice, NOT the company that received it.
+
+Analyze the image and accurately pull out the following fields for the business that ISSUED the invoice:
 - Invoice ID (e.g., INV-2024-001). If not explicitly present, generate a plausible one.
-- Business Name: The name of the company or entity receiving the invoice.
-- **Business Tax ID (CIF/NIF): CRITICAL. This is a high-priority field. Find the official tax identification number. It may be labeled as 'CIF', 'NIF', 'VAT ID', or similar.**
-- Business Address: The full mailing or physical address of the business.
+- Business Name: The name of the company or entity that created and sent the invoice.
+- **Business Tax ID (CIF/NIF): CRITICAL. This is a high-priority field. Find the official tax identification number of the ISSUER. It may be labeled as 'CIF', 'NIF', 'VAT ID', or similar.**
+- Business Address: The full mailing or physical address of the business that ISSUED the invoice.
 - Total Amount: The final amount due.
 - Issue Date: The date the invoice was created, formatted as YYYY-MM-DD.
 

@@ -25,15 +25,15 @@
         },
         "businessName": {
           "type": "string",
-          "description": "The name of the business associated with the invoice."
+          "description": "The name of the business that issued the invoice."
         },
         "cif": {
           "type": "string",
-          "description": "The tax ID (CIF) of the business."
+          "description": "The tax ID (CIF) of the business that issued the invoice."
         },
         "address": {
           "type": "string",
-          "description": "The address of the business."
+          "description": "The address of the business that issued the invoice."
         },
         "concept": {
           "type": "string",
