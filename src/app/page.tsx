@@ -263,11 +263,11 @@ export default function Home() {
   };
 
   const handleDownload = () => {
-    if (!invoices) return;
+    if (!filteredAndSortedInvoices) return;
 
     const visibleColumns = columns.filter((c) => c.isVisible);
     const header = visibleColumns.map((c) => escapeCsvCell(c.label)).join(",");
-    const rows = invoices.map((invoice) =>
+    const rows = filteredAndSortedInvoices.map((invoice) =>
       visibleColumns
         .map((c) => {
           const value = invoice[c.key as keyof Invoice];
@@ -584,5 +584,7 @@ export default function Home() {
     </div>
   );
 }
+
+    
 
     
