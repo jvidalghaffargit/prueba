@@ -369,8 +369,8 @@ export default function Home() {
         cif: extractedData.cif,
         address: extractedData.address,
         concept: "Scanned Invoice",
-        vatRate: 21,
-        vatAmount: extractedData.amount * 0.21,
+        vatRate: extractedData.vatRate,
+        vatAmount: extractedData.vatAmount,
       };
 
       await handleAddInvoice(newInvoice);

@@ -28,6 +28,8 @@ const ExtractInvoiceOutputSchema = z.object({
     address: z.string().optional().describe("The full physical address of the business that ISSUED the invoice. This is a critical field to extract if present."),
     amount: z.number().describe("The total amount due on the invoice."),
     date: z.string().describe("The date the invoice was issued, in YYYY-MM-DD format."),
+    vatRate: z.number().optional().describe("The VAT (IVA) rate applied as a percentage (e.g., 21 for 21%). Return 0 if not specified or exempt."),
+    vatAmount: z.number().optional().describe("The total calculated VAT (IVA) amount. Return 0 if not specified or exempt."),
 });
 export type ExtractInvoiceOutput = z.infer<typeof ExtractInvoiceOutputSchema>;
 
@@ -51,6 +53,8 @@ Analyze the image and accurately pull out the following fields for the business 
 - Business Address: The full mailing or physical address of the business that ISSUED the invoice.
 - Total Amount: The final amount due.
 - Issue Date: The date the invoice was created, formatted as YYYY-MM-DD.
+- **VAT Rate (IVA %): The VAT percentage applied (e.g., 21, 10, 4, 0). If it's exempt or not specified, return 0.**
+- **VAT Amount (IVA Cantidad): The total amount of VAT charged. If it's exempt or not specified, return 0.**
 
 Return ONLY the data in the specified JSON format. If an optional field like CIF or Address is not found, do not include it in the output.
 
