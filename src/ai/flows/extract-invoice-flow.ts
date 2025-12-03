@@ -1,7 +1,7 @@
 
 'use server';
 /**
- * @fileOverview An AI flow for extracting structured data from invoice images.
+ * @fileOverview An AI flow for extracting structured data from invoice images or PDFs.
  *
  * - extractInvoiceData - A function that handles the invoice data extraction process.
  * - ExtractInvoiceInput - The input type for the extractInvoiceData function.
@@ -12,10 +12,10 @@ import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 
 const ExtractInvoiceInputSchema = z.object({
-  photoDataUri: z
+  fileDataUri: z
     .string()
     .describe(
-      "A photo of an invoice, as a data URI that must include a MIME type and use Base64 encoding. Expected format: 'data:<mimetype>;base64,<encoded_data>'."
+      "An image of an invoice (or a document page), as a data URI that must include a MIME type and use Base64 encoding. Expected format: 'data:<mimetype>;base64,<encoded_data>'."
     ),
 });
 export type ExtractInvoiceInput = z.infer<typeof ExtractInvoiceInputSchema>;
@@ -48,7 +48,7 @@ If an Invoice ID is not explicitly present on the invoice, you must generate a p
 
 Return the data in the specified JSON format.
 
-Image: {{media url=photoDataUri}}`,
+Image: {{media url=fileDataUri}}`,
 });
 
 const extractInvoiceFlow = ai.defineFlow(

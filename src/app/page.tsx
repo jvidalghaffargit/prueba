@@ -20,7 +20,6 @@ import { InvoiceForm } from "@/components/invoice-form";
 import { ColumnCustomizer } from "@/components/column-customizer";
 import { useToast } from "@/hooks/use-toast";
 import { useUser, useAuth, useFirestore, useCollection, useMemoFirebase } from "@/firebase";
-import { initiateAnonymousSignIn } from "@/firebase/non-blocking-login";
 import { collection, query, where, addDoc, serverTimestamp, doc, deleteDoc, setDoc } from 'firebase/firestore';
 import { extractInvoiceData } from "@/ai/flows/extract-invoice-flow";
 import {
@@ -39,6 +38,11 @@ import { Calendar } from "@/components/ui/calendar";
 import { format, startOfDay, endOfDay } from "date-fns";
 import { DateRange } from "react-day-picker";
 import { cn } from "@/lib/utils";
+import * as pdfjs from 'pdfjs-dist';
+import { useRouter } from "next/navigation";
+
+// Set worker source for pdf.js
+pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
 const initialColumnsData: ColumnConfig[] = [
   { key: "invoiceId", label: "Invoice ID", isVisible: true },
@@ -72,12 +76,14 @@ export default function Home() {
   const auth = useAuth();
   const firestore = useFirestore();
   const { user, isUserLoading } = useUser();
+  const router = useRouter();
+
 
   useEffect(() => {
     if (!isUserLoading && !user) {
-      initiateAnonymousSignIn(auth);
+      router.push('/login');
     }
-  }, [user, isUserLoading, auth]);
+  }, [user, isUserLoading, router]);
 
   const invoicesQuery = useMemoFirebase(() => {
     if (!firestore || !user) return null;
@@ -292,7 +298,7 @@ export default function Home() {
     });
   };
 
-  const handleImageUpload = async (
+  const handleFileScan = async (
     event: React.ChangeEvent<HTMLInputElement>
   ) => {
     const file = event.target.files?.[0];
@@ -301,43 +307,64 @@ export default function Home() {
     setIsScanning(true);
     toast({
       title: "Scanning Invoice...",
-      description: "The AI is processing the image. Please wait.",
+      description: "The AI is processing the file. Please wait.",
     });
 
     try {
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onload = async () => {
-        const photoDataUri = reader.result as string;
-        const extractedData = await extractInvoiceData({ photoDataUri });
-        
-        const newInvoice: Omit<Invoice, "id" | "userId"> = {
-          invoiceId: extractedData.invoiceId,
-          businessName: extractedData.businessName,
-          amount: extractedData.amount,
-          date: new Date(extractedData.date),
-          cif: extractedData.cif,
-          address: extractedData.address,
-        };
+      let fileDataUri: string;
+      if (file.type === "application/pdf") {
+          const pdfAsArrayBuffer = await file.arrayBuffer();
+          const pdfDoc = await pdfjs.getDocument({data: pdfAsArrayBuffer}).promise;
+          const page = await pdfDoc.getPage(1);
+          const viewport = page.getViewport({ scale: 1.5 });
+          
+          const canvas = document.createElement('canvas');
+          const context = canvas.getContext('2d');
+          canvas.height = viewport.height;
+          canvas.width = viewport.width;
 
-        await handleAddInvoice(newInvoice);
-        
-        toast({
-          title: "Scan Complete!",
-          description: "Invoice data successfully extracted and saved.",
+          if (!context) {
+            throw new Error('Could not get canvas context');
+          }
+
+          await page.render({ canvasContext: context, viewport: viewport }).promise;
+          fileDataUri = canvas.toDataURL('image/png');
+      } else {
+        fileDataUri = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.readAsDataURL(file);
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = (error) => reject(error);
         });
-      };
-      reader.onerror = (error) => {
-        console.error("File reading error:", error);
-        throw new Error("Failed to read file.");
       }
+      
+      const extractedData = await extractInvoiceData({ fileDataUri });
+      
+      const newInvoice: Omit<Invoice, "id" | "userId"> = {
+        invoiceId: extractedData.invoiceId,
+        businessName: extractedData.businessName,
+        amount: extractedData.amount,
+        date: new Date(extractedData.date),
+        cif: extractedData.cif,
+        address: extractedData.address,
+        concept: "Scanned Invoice",
+        vatRate: 21,
+        vatAmount: extractedData.amount * 0.21,
+      };
+
+      await handleAddInvoice(newInvoice);
+      
+      toast({
+        title: "Scan Complete!",
+        description: "Invoice data successfully extracted and saved.",
+      });
     } catch (e) {
-      console.error("Error processing invoice image:", e);
+      console.error("Error processing invoice file:", e);
       toast({
         variant: "destructive",
         title: "Scan Failed",
         description:
-          "Could not extract data from the invoice image. Please try again.",
+          "Could not extract data from the invoice file. Please try again.",
       });
     } finally {
       setIsScanning(false);
@@ -354,6 +381,14 @@ export default function Home() {
   
   const isLoading = isUserLoading || isInvoicesLoading;
 
+  if (isUserLoading || !user) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen flex flex-col">
       <header className="bg-card border-b shadow-sm sticky top-0 z-10">
@@ -366,12 +401,14 @@ export default function Home() {
               </h1>
             </div>
             <div className="flex items-center space-x-2">
+              <span className="text-sm text-muted-foreground hidden sm:inline">{user.email}</span>
+               <Button variant="outline" onClick={() => auth.signOut()}>Logout</Button>
                <input
                 type="file"
                 ref={fileInputRef}
-                onChange={handleImageUpload}
+                onChange={handleFileScan}
                 className="hidden"
-                accept="image/*"
+                accept="image/*,application/pdf"
                 disabled={isScanning || !user}
               />
               <Button
