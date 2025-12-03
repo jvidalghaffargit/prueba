@@ -169,11 +169,21 @@ export default function Home() {
     if (!user || !firestore) return;
     try {
       const collectionRef = collection(firestore, 'invoices');
-      await addDoc(collectionRef, {
+      
+      const docData = {
         ...invoice,
         userId: user.uid,
         createdAt: serverTimestamp(),
+      };
+
+      // Remove undefined fields
+      Object.keys(docData).forEach(key => {
+        if ((docData as any)[key] === undefined) {
+          delete (docData as any)[key];
+        }
       });
+      
+      await addDoc(collectionRef, docData);
       
       toast({
         title: "Success",
@@ -194,7 +204,16 @@ export default function Home() {
     if (!user || !firestore) return;
     try {
       const docRef = doc(firestore, 'invoices', invoice.id);
-      await setDoc(docRef, invoice, { merge: true });
+      
+      const docData = { ...invoice };
+      // Remove undefined fields
+      Object.keys(docData).forEach(key => {
+        if ((docData as any)[key] === undefined) {
+          delete (docData as any)[key];
+        }
+      });
+
+      await setDoc(docRef, docData, { merge: true });
       toast({
         title: "Success",
         description: "Invoice updated successfully.",
@@ -584,6 +603,8 @@ export default function Home() {
     </div>
   );
 }
+
+    
 
     
 
