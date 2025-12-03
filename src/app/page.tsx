@@ -48,12 +48,13 @@ const initialColumnsData: ColumnConfig[] = [
   { key: "invoiceId", label: "Invoice ID", isVisible: true },
   { key: "businessName", label: "Business", isVisible: true },
   { key: "date", label: "Date", isVisible: true },
-  { key: "amount", label: "Amount", isVisible: true },
+  { key: "baseAmount", label: "Base Amount", isVisible: false },
+  { key: "vatAmount", label: "VAT Amount", isVisible: false },
+  { key: "totalAmount", label: "Total Amount", isVisible: true },
   { key: "cif", label: "CIF", isVisible: false },
   { key: "address", label: "Address", isVisible: false },
   { key: "concept", label: "Concept", isVisible: false },
   { key: "vatRate", label: "VAT Rate", isVisible: false },
-  { key: "vatAmount", label: "VAT Amount", isVisible: false },
 ];
 
 const ITEMS_PER_PAGE = 10;
@@ -364,7 +365,8 @@ export default function Home() {
       const newInvoice: Omit<Invoice, "id" | "userId"> = {
         invoiceId: extractedData.invoiceId,
         businessName: extractedData.businessName,
-        amount: extractedData.amount,
+        baseAmount: extractedData.baseAmount,
+        totalAmount: extractedData.totalAmount,
         date: new Date(extractedData.date),
         cif: extractedData.cif,
         address: extractedData.address,
@@ -603,11 +605,3 @@ export default function Home() {
     </div>
   );
 }
-
-    
-
-    
-
-    
-
-    

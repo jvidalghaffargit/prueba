@@ -8,10 +8,11 @@ export const invoiceSchema = z.object({
   cif: z.string().optional(),
   address: z.string().optional(),
   concept: z.string().optional(),
-  amount: z.coerce.number().positive("Amount must be a positive number."),
+  baseAmount: z.coerce.number().positive("Amount must be a positive number."),
   date: z.date({ required_error: "Please select a date." }),
   vatRate: z.coerce.number().optional(),
   vatAmount: z.coerce.number().optional(),
+  totalAmount: z.coerce.number().optional(),
 });
 
 // This is the TypeScript type for an invoice as it is stored in Firestore.
@@ -25,9 +26,10 @@ export type Invoice = {
   cif?: string;
   address?: string;
   concept?: string;
-  amount: number;
+  baseAmount: number;
   vatRate?: number;
   vatAmount?: number;
+  totalAmount: number;
   date: Date | { seconds: number; nanoseconds: number };
 };
 

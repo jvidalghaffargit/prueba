@@ -71,10 +71,11 @@ const defaultValues = {
   cif: "",
   address: "",
   concept: "",
-  amount: 0,
+  baseAmount: 0,
   date: undefined,
   vatRate: 21,
   vatAmount: 0,
+  totalAmount: 0,
 };
 
 export function InvoiceForm({
@@ -108,15 +109,20 @@ export function InvoiceForm({
     }
   }, [invoice, isOpen, form]);
 
-  const amount = form.watch("amount");
+  const baseAmount = form.watch("baseAmount");
   const vatRate = form.watch("vatRate");
 
   useEffect(() => {
-    if (typeof amount === 'number' && typeof vatRate === 'number') {
-      const vat = (amount * vatRate) / 100;
-      form.setValue("vatAmount", parseFloat(vat.toFixed(2)));
-    }
-  }, [amount, vatRate, form]);
+    const rate = typeof vatRate === 'number' ? vatRate : 0;
+    const base = typeof baseAmount === 'number' ? baseAmount : 0;
+    
+    const vat = (base * rate) / 100;
+    const total = base + vat;
+
+    form.setValue("vatAmount", parseFloat(vat.toFixed(2)));
+    form.setValue("totalAmount", parseFloat(total.toFixed(2)));
+
+  }, [baseAmount, vatRate, form]);
 
 
   const onSubmit = (values: z.infer<typeof invoiceSchema>) => {
@@ -302,10 +308,10 @@ export function InvoiceForm({
               )}
             />
 
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 <FormField
                     control={form.control}
-                    name="amount"
+                    name="baseAmount"
                     render={({ field }) => (
                         <FormItem>
                         <FormLabel>Base Amount</FormLabel>
@@ -336,7 +342,20 @@ export function InvoiceForm({
                         <FormItem>
                         <FormLabel>VAT Amount</FormLabel>
                         <FormControl>
-                            <Input type="number" placeholder="e.g., 21.00" {...field} readOnly className="bg-muted"/>
+                            <Input type="number" {...field} readOnly className="bg-muted"/>
+                        </FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                />
+                <FormField
+                    control={form.control}
+                    name="totalAmount"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>Total Amount</FormLabel>
+                        <FormControl>
+                            <Input type="number" {...field} readOnly className="bg-muted"/>
                         </FormControl>
                         <FormMessage />
                         </FormItem>

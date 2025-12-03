@@ -4,7 +4,7 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Invoice",
       "type": "object",
-      "description": "Represents an invoice record.",
+      "description": "Represents an invoice record, detailing a transaction from an issuing business.",
       "properties": {
         "id": {
           "type": "string",
@@ -19,9 +19,13 @@
           "description": "The date of the invoice.",
           "format": "date-time"
         },
-        "amount": {
+        "baseAmount": {
           "type": "number",
-          "description": "The total amount of the invoice."
+          "description": "The base amount of the invoice, before taxes."
+        },
+        "totalAmount": {
+          "type": "number",
+          "description": "The total amount of the invoice, including taxes."
         },
         "businessName": {
           "type": "string",
@@ -56,7 +60,8 @@
         "id",
         "invoiceId",
         "date",
-        "amount",
+        "baseAmount",
+        "totalAmount",
         "businessName",
         "userId"
       ]

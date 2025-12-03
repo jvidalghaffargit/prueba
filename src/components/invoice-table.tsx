@@ -59,8 +59,9 @@ export function InvoiceTable({
         }
         return "Invalid Date";
 
-      case "amount":
+      case "baseAmount":
       case "vatAmount":
+      case "totalAmount":
         return (value as number)?.toLocaleString("en-US", {
           style: "currency",
           currency: "USD",
